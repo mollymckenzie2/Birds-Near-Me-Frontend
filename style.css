@@ -1,0 +1,36 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f3f7f9;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: 500px;
+  margin: 50px auto;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+h1 {
+  text-align: center;
+  color: #2a5d34;
+}
+
+#birds {
+  margin-top: 20px;
+}
+
+.bird {
+  padding: 8px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.attribution {
+  margin-top: 20px;
+  font-size: 12px;
+  text-align: center;
+  color: #555;
+}
