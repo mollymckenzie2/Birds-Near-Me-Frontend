@@ -1,3 +1,4 @@
+
 body {
   font-family: Arial, sans-serif;
   margin: 0;
@@ -23,6 +24,7 @@ h1 {
   gap: 20px;
 }
 
+
 .bird-card {
   background-color: #fff;
   border-radius: 8px;
@@ -46,6 +48,34 @@ h1 {
   font-weight: bold;
 }
 
+.bird-card p:nth-child(4) {
+  font-style: italic; 
+}
+
+.loading-container {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.loading-text {
+  font-style: italic;
+  font-size: 1.1em;
+  margin-top: 10px;
+}
+
+.dots::after {
+  content: '.';
+  animation: dots 1s steps(3, end) infinite;
+}
+
+@keyframes dots {
+  0%, 20% { content: ''; }
+  40% { content: '.'; }
+  60% { content: '..'; }
+  80%, 100% { content: '...'; }
+}
+
+
 .attribution {
   text-align: center;
   margin-top: 20px;
@@ -64,4 +94,3 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
-

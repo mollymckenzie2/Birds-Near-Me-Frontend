@@ -1,12 +1,13 @@
 const backendURL = "https://birds-near-me-backend-lknu.onrender.com";
 const birdsDiv = document.getElementById("birds");
 
-// Format API obsDt into readable date/time
+
 function formatDate(obsDt) {
   const date = new Date(obsDt);
   const options = { month: "long", day: "numeric", hour: "numeric", minute: "numeric" };
   return date.toLocaleString(undefined, options);
 }
+
 
 function fetchBirds(lat, lng) {
   const url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=10&maxResults=15`;
@@ -19,15 +20,16 @@ function fetchBirds(lat, lng) {
     .then(data => displayBirds(data))
     .catch(err => {
       console.error("Error fetching bird data:", err);
-      birdsDiv.textContent = "Error fetching bird data.";
+      birdsDiv.innerHTML = "<p>Error fetching bird data.</p>";
     });
 }
 
+
 function displayBirds(birds) {
-  birdsDiv.innerHTML = "";
+  birdsDiv.innerHTML = ""; 
 
   if (!birds || birds.length === 0) {
-    birdsDiv.textContent = "No birds found nearby.";
+    birdsDiv.innerHTML = "<p>No birds found nearby.</p>";
     return;
   }
 
@@ -46,7 +48,6 @@ function displayBirds(birds) {
 
     const sciName = document.createElement("p");
     sciName.innerHTML = `<span>Scientific Name:</span> ${bird.sciName}`;
-    sciName.style.fontStyle = "italic";
 
     card.appendChild(name);
     card.appendChild(count);
@@ -57,9 +58,9 @@ function displayBirds(birds) {
   });
 }
 
+
 function init() {
   if ("geolocation" in navigator) {
-    birdsDiv.textContent = "Loading birds near you...";
     navigator.geolocation.getCurrentPosition(
       position => {
         const { latitude, longitude } = position.coords;
@@ -67,11 +68,11 @@ function init() {
       },
       error => {
         console.error("Geolocation error:", error);
-        birdsDiv.textContent = "Unable to get your location.";
+        birdsDiv.innerHTML = "<p>Unable to get your location.</p>";
       }
     );
   } else {
-    birdsDiv.textContent = "Geolocation is not supported by your browser.";
+    birdsDiv.innerHTML = "<p>Geolocation is not supported by your browser.</p>";
   }
 }
 
