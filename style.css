@@ -16,6 +16,7 @@ h1 {
   margin-bottom: 20px;
 }
 
+
 .birds-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -31,14 +32,18 @@ h1 {
 }
 
 .bird-card h2 {
-  margin: 0;
+  margin: 0 0 5px 0;
   font-size: 1.1em;
 }
 
 .bird-card p {
-  margin: 5px 0;
+  margin: 3px 0;
   font-size: 0.9em;
   color: #555;
+}
+
+.bird-card p span {
+  font-weight: bold;
 }
 
 .attribution {
@@ -46,3 +51,17 @@ h1 {
   margin-top: 20px;
   font-size: 0.8em;
 }
+
+
+@media (max-width: 768px) {
+  .birds-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .birds-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

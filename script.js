@@ -1,6 +1,13 @@
 const backendURL = "https://birds-near-me-backend-lknu.onrender.com";
 const birdsDiv = document.getElementById("birds");
 
+// Format API obsDt into readable date/time
+function formatDate(obsDt) {
+  const date = new Date(obsDt);
+  const options = { month: "long", day: "numeric", hour: "numeric", minute: "numeric" };
+  return date.toLocaleString(undefined, options);
+}
+
 function fetchBirds(lat, lng) {
   const url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=10&maxResults=15`;
 
@@ -32,14 +39,18 @@ function displayBirds(birds) {
     name.textContent = bird.comName;
 
     const count = document.createElement("p");
-    count.textContent = `Quantity: ${bird.howMany}`;
+    count.innerHTML = `<span>Quantity:</span> ${bird.howMany}`;
+
+    const seenDate = document.createElement("p");
+    seenDate.innerHTML = `<span>Seen:</span> ${formatDate(bird.obsDt)}`;
 
     const sciName = document.createElement("p");
-    sciName.textContent = bird.sciName;
+    sciName.innerHTML = `<span>Scientific Name:</span> ${bird.sciName}`;
     sciName.style.fontStyle = "italic";
 
     card.appendChild(name);
     card.appendChild(count);
+    card.appendChild(seenDate);
     card.appendChild(sciName);
 
     birdsDiv.appendChild(card);
