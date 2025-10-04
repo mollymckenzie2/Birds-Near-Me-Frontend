@@ -1,8 +1,7 @@
 const birdsDiv = document.getElementById("birds");
 
 
-const BACKEND_URL = "https://birds-near-me-backend.onrender.com";
-
+const BACKEND_URL = "https://birds-near-me-backend-lknu.onrender.com";
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(success, error);
 } else {
