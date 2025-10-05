@@ -178,8 +178,17 @@ function displayBirds(birds, userLat, userLng) {
     const card = document.createElement('div');
     card.className = 'bird-card';
 
-    const name = document.createElement('h2');
-    name.textContent = bird.comName;
+  
+  const imgEl = document.createElement('img');
+  imgEl.className = 'bird-thumb';
+  const speciesCode = bird.speciesCode || bird.speciescode || bird.species;
+
+  imgEl.src = `images/${speciesCode}.png`;
+  imgEl.alt = bird.comName || 'bird image';
+  imgEl.onerror = () => { imgEl.style.display = 'none'; };
+
+  const name = document.createElement('h2');
+  name.textContent = bird.comName;
 
     const count = document.createElement('p');
     count.className = 'quantity';
@@ -202,7 +211,8 @@ function displayBirds(birds, userLat, userLng) {
     sci.className = 'scientific';
     sci.innerHTML = `<span>Scientific Name:</span> ${bird.sciName}`;
 
-    card.appendChild(name);
+  card.appendChild(imgEl);
+  card.appendChild(name);
     card.appendChild(count);
     card.appendChild(distanceP);
     card.appendChild(seen);

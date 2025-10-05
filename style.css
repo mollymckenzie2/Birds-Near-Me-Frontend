@@ -33,6 +33,17 @@ h1 {
   text-align: center;
 }
 
+.bird-card img.bird-thumb {
+  display: block;
+  margin: 0 auto 8px auto;
+  max-width: 100%;
+  height: auto;
+  width: 140px; 
+  object-fit: contain;
+  border-radius: 6px;
+  background: #f6f6f6;
+}
+
 .bird-card h2 {
   margin: 0 0 5px 0;
   font-size: 1.1em;
