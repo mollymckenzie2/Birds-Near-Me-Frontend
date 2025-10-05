@@ -19,15 +19,17 @@ function ensureSearchStatusEl() {
   statusEl.className = 'compass-container';
   // place the status below the page header (if present)
   const header = document.querySelector('.container h1');
+  let inserted = false;
   if (header && header.parentNode) {
-    // insert after header and add margin so it doesn't overlap
+    // insert after header and add larger margin so it doesn't overlap
     header.parentNode.insertBefore(statusEl, header.nextSibling);
     statusEl.style.position = 'relative';
-    statusEl.style.marginTop = '12px';
+    statusEl.style.marginTop = '64px';
+    inserted = true;
   } else {
     // fallback to a fixed top position but moved lower
-    statusEl.style.position = 'fixed';
-    statusEl.style.top = '72px';
+  statusEl.style.position = 'fixed';
+  statusEl.style.top = '120px';
     statusEl.style.left = '50%';
     statusEl.style.transform = 'translateX(-50%)';
   }
@@ -40,7 +42,7 @@ function ensureSearchStatusEl() {
   statusEl.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
 
   const container = birdsDiv && birdsDiv.parentNode ? birdsDiv.parentNode : document.body;
-  container.insertBefore(statusEl, birdsDiv || container.firstChild);
+  if (!inserted) container.insertBefore(statusEl, birdsDiv || container.firstChild);
   searchStatusEl = statusEl;
   console.log('ensureSearchStatusEl created', searchStatusEl);
   return searchStatusEl;
