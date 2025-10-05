@@ -3,11 +3,11 @@ const birdsDiv = document.getElementById("birds");
 
 console.log('script.js loaded');
 
-// explicit radii order used by fetchWithRadiusRetries (miles)
+
 const SEARCH_RADII_MILES = [3, 5, 10];
 
 
-// top-level status element and helpers so init() can show a status before geolocation
+
 let searchStatusEl = null;
 function ensureSearchStatusEl() {
   if (searchStatusEl) return searchStatusEl;
@@ -17,17 +17,17 @@ function ensureSearchStatusEl() {
   const statusEl = document.createElement('div');
   statusEl.id = 'search-status';
   statusEl.className = 'compass-container';
-  // place the status below the page header (if present)
+
   const header = document.querySelector('.container h1');
   let inserted = false;
   if (header && header.parentNode) {
-    // insert after header and add larger margin so it doesn't overlap
+   
     header.parentNode.insertBefore(statusEl, header.nextSibling);
     statusEl.style.position = 'relative';
     statusEl.style.marginTop = '64px';
     inserted = true;
   } else {
-    // fallback to a fixed top position but moved lower
+    
   statusEl.style.position = 'fixed';
   statusEl.style.top = '120px';
     statusEl.style.left = '50%';
@@ -96,7 +96,7 @@ function obsWithinDays(obsDt, days) {
 function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxResults = 30, recentDays = 3) {
   let attempt = 0;
 
-  // ensure status element exists (top-level helper)
+  
   ensureSearchStatusEl();
 
   function tryNext() {
@@ -111,7 +111,12 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
     const distKm = Math.round(distMiles * 1.60934 * 100) / 100;
     const url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=${distKm}&maxResults=${maxResults}`;
   console.log(`trying radius attempt #${attempt + 1}: ${distMiles} mi (${distKm} km)`);
-  showSearchStatus(`Searching within ${distMiles} mi`);
+  
+  if (attempt === 0) {
+    showSearchStatus('Loading birds');
+  } else {
+    showSearchStatus(`Searching within ${distMiles} mi`);
+  }
 
     fetch(url)
       .then(res => {
@@ -209,13 +214,6 @@ function displayBirds(birds, userLat, userLng) {
 
 function init() {
   console.log('init');
-  // brief visual test: show a compass for 1.5s so user can confirm styles
-  try {
-    showSearchStatus('Searching within 3 mi');
-    setTimeout(() => { hideSearchStatus(); }, 1500);
-  } catch (e) {
-    console.warn('test compass failed', e);
-  }
   if ('geolocation' in navigator) {
     navigator.geolocation.getCurrentPosition(pos => {
       const { latitude, longitude } = pos.coords;
