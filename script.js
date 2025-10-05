@@ -178,17 +178,39 @@ function displayBirds(birds, userLat, userLng) {
     const card = document.createElement('div');
     card.className = 'bird-card';
 
-  
-  const imgEl = document.createElement('img');
-  imgEl.className = 'bird-thumb';
-  const speciesCode = bird.speciesCode || bird.speciescode || bird.species;
+    // image: speciesCode maps to a PNG file in the images folder (if present)
+    const imgEl = document.createElement('img');
+    imgEl.className = 'bird-thumb';
+    const speciesCode = bird.speciesCode || bird.speciescode || bird.species;
+    imgEl.alt = bird.comName || 'bird image';
 
-  imgEl.src = `images/${speciesCode}.png`;
-  imgEl.alt = bird.comName || 'bird image';
-  imgEl.onerror = () => { imgEl.style.display = 'none'; };
+    if (!speciesCode) {
+      imgEl.style.display = 'none';
+    } else {
+      
+      const candidates = [
+        `images/output/${speciesCode}.png`,
+        `images/${String(speciesCode).toLowerCase()}.png`,
+        `images/output/${String(speciesCode).toLowerCase()}.png`
+      ];
+      let attempt = 0;
+      console.log('trying images for', speciesCode, 'candidates:', candidates);
+      imgEl.onerror = () => {
+        attempt += 1;
+        if (attempt < candidates.length) {
+          imgEl.src = candidates[attempt];
+        } else {
+          imgEl.style.display = 'none';
+          console.log('no image found for', speciesCode, 'after trying', candidates);
+        }
+      };
+      imgEl.onload = () => { console.log('loaded image for', speciesCode, imgEl.src); };
+      // start with first candidate
+      imgEl.src = candidates[0];
+    }
 
-  const name = document.createElement('h2');
-  name.textContent = bird.comName;
+    const name = document.createElement('h2');
+    name.textContent = bird.comName;
 
     const count = document.createElement('p');
     count.className = 'quantity';
