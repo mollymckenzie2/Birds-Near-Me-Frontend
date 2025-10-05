@@ -71,9 +71,9 @@ function displayBirds(birds, userLat, userLng) {
       const dist = haversineDistanceMiles(userLat, userLng, bird.lat, bird.lng);
       
       const distStr = Number(dist).toPrecision(2);
-      distanceText = `<span>Distance:</span> ${distStr} mi`;
+      distanceText = `<span>Distance Away:</span> ${distStr} mi`;
     } else {
-      distanceText = `<span>Distance:</span> Unknown`;
+      distanceText = `<span>Distance Away:</span> Unknown`;
     }
     const distance = document.createElement("p");
     distance.innerHTML = distanceText;
