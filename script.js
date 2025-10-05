@@ -1,6 +1,8 @@
 const backendURL = "https://birds-near-me-backend-lknu.onrender.com";
 const birdsDiv = document.getElementById("birds");
 
+console.log('script.js loaded');
+
 
 function formatDate(obsDt) {
   const date = new Date(obsDt);
@@ -12,12 +14,17 @@ function formatDate(obsDt) {
 function fetchBirds(lat, lng) {
   const url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=10&maxResults=15`;
 
+  console.log('fetchBirds: fetching', url);
   fetch(url)
     .then(res => {
+      console.log('fetch response status', res.status);
       if (!res.ok) throw new Error("Network response was not ok");
       return res.json();
     })
-    .then(data => displayBirds(data, lat, lng))
+    .then(data => {
+      console.log('fetchBirds: received data', data && data.length ? `${data.length} items` : data);
+      displayBirds(data, lat, lng);
+    })
     .catch(err => {
       console.error("Error fetching bird data:", err);
       birdsDiv.innerHTML = "<p>Error fetching bird data.</p>";
@@ -27,7 +34,7 @@ function fetchBirds(lat, lng) {
 
 function haversineDistanceMiles(lat1, lon1, lat2, lon2) {
   function toRad(x) { return x * Math.PI / 180; }
-  const R = 3959; // miles
+  const R = 3959; 
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
   const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -40,13 +47,15 @@ function haversineDistanceMiles(lat1, lon1, lat2, lon2) {
 function displayBirds(birds, userLat, userLng) {
   birdsDiv.innerHTML = "";
 
+  console.log('displayBirds called with userLat,userLng', userLat, userLng);
+
   if (!birds || birds.length === 0) {
     birdsDiv.innerHTML = "<p>No birds found nearby.</p>";
     return;
   }
 
   birds.forEach(bird => {
-    console.log('bird data:', bird, 'userLat:', userLat, 'userLng:', userLng);
+    console.log('displayBirds: bird', bird);
     const card = document.createElement("div");
     card.className = "bird-card";
 
