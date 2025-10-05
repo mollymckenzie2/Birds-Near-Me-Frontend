@@ -47,8 +47,12 @@ h1 {
   font-weight: bold;
 }
 
-.bird-card p:last-child {
+.bird-card p.scientific {
   font-style: italic;
+}
+
+.bird-card p.seen {
+  font-style: normal;
 }
 
 

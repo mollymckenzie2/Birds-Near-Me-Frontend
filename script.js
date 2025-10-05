@@ -12,8 +12,7 @@ function formatDate(obsDt) {
 
 
 function fetchWithRadiusRetries(lat, lng, radiiMiles = [10, 25, 50, 100], maxResults = 15) {
-  // radiiMiles is an array of radii in miles that we'll present to the user.
-  // Convert each mile value to kilometers when calling the eBird API (which expects km).
+  
   let attempt = 0;
 
   function tryNext() {
@@ -25,7 +24,7 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = [10, 25, 50, 100], maxRes
     }
 
     const distMiles = radiiMiles[attempt];
-    const distKm = Math.round(distMiles * 1.60934 * 100) / 100; // convert to km, round to 2 decimals
+    const distKm = Math.round(distMiles * 1.60934 * 100) / 100; 
     const url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=${distKm}&maxResults=${maxResults}`;
     console.log(`fetchWithRadiusRetries: trying radius ${distMiles} mi (${distKm} km) -> ${url}`);
     birdsDiv.innerHTML = `<p>Searching within ${distMiles} mi...</p>`;
@@ -42,7 +41,7 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = [10, 25, 50, 100], maxRes
           displayBirds(data, lat, lng);
         } else {
           attempt++;
-          // small delay so user can see the status update
+          
           setTimeout(tryNext, 500);
         }
       })
@@ -56,7 +55,7 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = [10, 25, 50, 100], maxRes
 }
 
 function fetchBirds(lat, lng) {
-  // default radii (miles) to try if nearby is empty
+  
   const radiiMiles = [10, 25, 50, 100];
   fetchWithRadiusRetries(lat, lng, radiiMiles, 15);
 }
@@ -92,8 +91,9 @@ function displayBirds(birds, userLat, userLng) {
     const name = document.createElement("h2");
     name.textContent = bird.comName;
 
-    const count = document.createElement("p");
-    count.innerHTML = `<span>Quantity:</span> ${bird.howMany}`;
+  const count = document.createElement("p");
+  count.className = 'quantity';
+  count.innerHTML = `<span>Quantity:</span> ${bird.howMany}`;
 
 
     let distanceText = "";
@@ -105,14 +105,17 @@ function displayBirds(birds, userLat, userLng) {
     } else {
       distanceText = `<span>Distance Away:</span> Unknown`;
     }
-    const distance = document.createElement("p");
-    distance.innerHTML = distanceText;
+  const distance = document.createElement("p");
+  distance.className = 'distance';
+  distance.innerHTML = distanceText;
 
-    const seenDate = document.createElement("p");
-    seenDate.innerHTML = `<span>Seen:</span> ${formatDate(bird.obsDt)}`;
+  const seenDate = document.createElement("p");
+  seenDate.className = 'seen';
+  seenDate.innerHTML = `<span>Seen:</span> ${formatDate(bird.obsDt)}`;
 
-    const sciName = document.createElement("p");
-    sciName.innerHTML = `<span>Scientific Name:</span> ${bird.sciName}`;
+  const sciName = document.createElement("p");
+  sciName.className = 'scientific';
+  sciName.innerHTML = `<span>Scientific Name:</span> ${bird.sciName}`;
 
     card.appendChild(name);
     card.appendChild(count);
