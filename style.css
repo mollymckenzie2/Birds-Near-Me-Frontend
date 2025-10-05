@@ -47,7 +47,7 @@ h1 {
   font-weight: bold;
 }
 
-.bird-card p:nth-child(4) {
+.bird-card p:last-child {
   font-style: italic;
 }
 
