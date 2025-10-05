@@ -29,6 +29,32 @@ function obsWithinDays(obsDt, days) {
 function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxResults = 30, recentDays = 3) {
   let attempt = 0;
 
+  // ensure there is a status area for spinner + text
+  let statusEl = document.getElementById('search-status');
+  if (!statusEl) {
+    statusEl = document.createElement('div');
+    statusEl.id = 'search-status';
+    statusEl.className = 'compass-container';
+    // insert at top of birdsDiv parent if possible
+    if (birdsDiv && birdsDiv.parentNode) birdsDiv.parentNode.insertBefore(statusEl, birdsDiv);
+    else document.body.insertBefore(statusEl, document.body.firstChild);
+  }
+
+  function showStatus(distMiles) {
+    statusEl.innerHTML = '';
+    const compass = document.createElement('div');
+    compass.className = 'compass';
+    const text = document.createElement('div');
+    text.className = 'loading-text';
+    text.textContent = `Searching within ${distMiles} mi`;
+    statusEl.appendChild(compass);
+    statusEl.appendChild(text);
+  }
+
+  function hideStatus() {
+    if (statusEl) statusEl.innerHTML = '';
+  }
+
   function tryNext() {
     if (attempt >= radiiMiles.length) {
       const last = radiiMiles[radiiMiles.length - 1];
@@ -41,7 +67,7 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
     const distKm = Math.round(distMiles * 1.60934 * 100) / 100;
     const url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=${distKm}&maxResults=${maxResults}`;
   console.log(`trying radius attempt #${attempt + 1}: ${distMiles} mi (${distKm} km)`);
-    birdsDiv.innerHTML = `<p>Searching within ${distMiles} mi...</p>`;
+  showStatus(distMiles);
 
     fetch(url)
       .then(res => {
@@ -60,6 +86,7 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
         const recent = data.filter(b => obsWithinDays(b.obsDt, recentDays));
         console.log('recent filtered count:', recent.length);
         if (recent.length > 0) {
+          hideStatus();
           displayBirds(recent, lat, lng);
         } else {
           attempt++;
@@ -68,6 +95,7 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
       })
       .catch(err => {
         console.error('fetch error', err);
+        hideStatus();
         birdsDiv.innerHTML = '<p>Error fetching bird data.</p>';
       });
   }

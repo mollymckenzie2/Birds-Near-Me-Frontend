@@ -107,6 +107,57 @@ h1 {
   margin-top: 15px;
 }
 
+/* Compass spinner for searching status */
+.compass-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.compass {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff 8%, transparent 9%),
+              conic-gradient(#28a745 0 25%, #fff0 25% 100%);
+  position: relative;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  animation: compass-rotate 1s linear infinite;
+}
+
+.compass::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 22px;
+  background: #e74c3c; /* needle tip */
+  transform-origin: 50% 80%;
+  transform: translate(-50%, -50%) rotate(0deg);
+  border-radius: 2px;
+}
+
+.compass::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 22px;
+  background: #3498db; /* opposite needle */
+  transform-origin: 50% 20%;
+  transform: translate(-50%, -50%) rotate(180deg);
+  border-radius: 2px;
+}
+
+@keyframes compass-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 .dots::after {
   content: '.';
   animation: dots 1s steps(3, end) infinite;
