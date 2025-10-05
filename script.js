@@ -3,6 +3,9 @@ const birdsDiv = document.getElementById("birds");
 
 console.log('script.js loaded');
 
+// explicit radii order used by fetchWithRadiusRetries (miles)
+const SEARCH_RADII_MILES = [3, 5, 10];
+
 
 function formatDate(obsDt) {
   const date = new Date(obsDt);
@@ -10,7 +13,7 @@ function formatDate(obsDt) {
   return date.toLocaleString(undefined, options);
 }
 
-// parse obsDt robustly and check if within `days` days of now
+
 function obsWithinDays(obsDt, days) {
   if (!obsDt) return false;
   let d = new Date(obsDt);
@@ -23,8 +26,7 @@ function obsWithinDays(obsDt, days) {
   return diffDays <= days;
 }
 
-function fetchWithRadiusRetries(lat, lng, radiiMiles = [3, 5, 10], maxResults = 30, recentDays = 3) {
-  
+function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxResults = 30, recentDays = 3) {
   let attempt = 0;
 
   function tryNext() {
@@ -35,11 +37,10 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = [3, 5, 10], maxResults = 
       return;
     }
 
-    const distMiles = radiiMiles[attempt];
+  const distMiles = radiiMiles[attempt];
     const distKm = Math.round(distMiles * 1.60934 * 100) / 100;
     const url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=${distKm}&maxResults=${maxResults}`;
-
-    console.log(`trying radius ${distMiles} mi (${distKm} km)`);
+  console.log(`trying radius attempt #${attempt + 1}: ${distMiles} mi (${distKm} km)`);
     birdsDiv.innerHTML = `<p>Searching within ${distMiles} mi...</p>`;
 
     fetch(url)
