@@ -7,6 +7,62 @@ console.log('script.js loaded');
 const SEARCH_RADII_MILES = [3, 5, 10];
 
 
+// top-level status element and helpers so init() can show a status before geolocation
+let searchStatusEl = null;
+function ensureSearchStatusEl() {
+  if (searchStatusEl) return searchStatusEl;
+  const el = document.getElementById('search-status');
+  if (el) { searchStatusEl = el; return searchStatusEl; }
+
+  const statusEl = document.createElement('div');
+  statusEl.id = 'search-status';
+  statusEl.className = 'compass-container';
+  // make the status fixed at top-center so it's always visible
+  statusEl.style.position = 'fixed';
+  statusEl.style.top = '16px';
+  statusEl.style.left = '50%';
+  statusEl.style.transform = 'translateX(-50%)';
+  statusEl.style.display = 'flex';
+  statusEl.style.zIndex = '9999';
+  statusEl.style.background = '#ffffffcc';
+  statusEl.style.padding = '8px 12px';
+  statusEl.style.border = '2px solid #28a745';
+  statusEl.style.borderRadius = '8px';
+  statusEl.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
+
+  const container = birdsDiv && birdsDiv.parentNode ? birdsDiv.parentNode : document.body;
+  container.insertBefore(statusEl, birdsDiv || container.firstChild);
+  searchStatusEl = statusEl;
+  console.log('ensureSearchStatusEl created', searchStatusEl);
+  return searchStatusEl;
+}
+
+function showSearchStatus(statusText) {
+  const statusEl = ensureSearchStatusEl();
+  statusEl.innerHTML = '';
+  const compass = document.createElement('div');
+  compass.className = 'compass';
+  compass.style.width = '64px';
+  compass.style.height = '64px';
+  compass.style.background = 'conic-gradient(#28a745 0 25%, #f1f1f1 25% 100%)';
+  compass.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+  const textEl = document.createElement('div');
+  textEl.className = 'loading-text';
+  textEl.textContent = statusText;
+  statusEl.appendChild(compass);
+  statusEl.appendChild(textEl);
+  statusEl.style.display = 'flex';
+  console.log('showSearchStatus:', statusText);
+}
+
+function hideSearchStatus() {
+  if (!searchStatusEl) return;
+  searchStatusEl.innerHTML = '';
+  searchStatusEl.style.display = 'none';
+  console.log('hideSearchStatus');
+}
+
+
 function formatDate(obsDt) {
   const date = new Date(obsDt);
   const options = { month: "long", day: "numeric", hour: "numeric", minute: "numeric" };
@@ -29,38 +85,8 @@ function obsWithinDays(obsDt, days) {
 function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxResults = 30, recentDays = 3) {
   let attempt = 0;
 
-  // ensure there is a status area for spinner + text
-  let statusEl = document.getElementById('search-status');
-  if (!statusEl) {
-    statusEl = document.createElement('div');
-    statusEl.id = 'search-status';
-    statusEl.className = 'compass-container';
-   
-    if (birdsDiv && birdsDiv.parentNode) birdsDiv.parentNode.insertBefore(statusEl, birdsDiv);
-    else document.body.insertBefore(statusEl, document.body.firstChild);
-    console.log('created search-status element', statusEl);
-  }
-
-  function showStatus(distMiles) {
-    statusEl.innerHTML = '';
-    const compass = document.createElement('div');
-    compass.className = 'compass';
-    const text = document.createElement('div');
-    text.className = 'loading-text';
-    text.textContent = `Searching within ${distMiles} mi`;
-    statusEl.appendChild(compass);
-    statusEl.appendChild(text);
-    statusEl.style.display = 'flex';
-    console.log('showStatus called for', distMiles);
-  }
-
-  function hideStatus() {
-    if (statusEl) {
-      statusEl.innerHTML = '';
-      statusEl.style.display = 'none';
-      console.log('hideStatus called');
-    }
-  }
+  // ensure status element exists (top-level helper)
+  ensureSearchStatusEl();
 
   function tryNext() {
     if (attempt >= radiiMiles.length) {
@@ -74,7 +100,7 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
     const distKm = Math.round(distMiles * 1.60934 * 100) / 100;
     const url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=${distKm}&maxResults=${maxResults}`;
   console.log(`trying radius attempt #${attempt + 1}: ${distMiles} mi (${distKm} km)`);
-  showStatus(distMiles);
+  showSearchStatus(`Searching within ${distMiles} mi`);
 
     fetch(url)
       .then(res => {
@@ -93,7 +119,7 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
         const recent = data.filter(b => obsWithinDays(b.obsDt, recentDays));
         console.log('recent filtered count:', recent.length);
         if (recent.length > 0) {
-          hideStatus();
+          hideSearchStatus();
           displayBirds(recent, lat, lng);
         } else {
           attempt++;
@@ -102,7 +128,7 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
       })
       .catch(err => {
         console.error('fetch error', err);
-        hideStatus();
+        hideSearchStatus();
         birdsDiv.innerHTML = '<p>Error fetching bird data.</p>';
       });
   }
@@ -172,6 +198,13 @@ function displayBirds(birds, userLat, userLng) {
 
 function init() {
   console.log('init');
+  // brief visual test: show a compass for 1.5s so user can confirm styles
+  try {
+    showSearchStatus('Searching within 3 mi');
+    setTimeout(() => { hideSearchStatus(); }, 1500);
+  } catch (e) {
+    console.warn('test compass failed', e);
+  }
   if ('geolocation' in navigator) {
     navigator.geolocation.getCurrentPosition(pos => {
       const { latitude, longitude } = pos.coords;
