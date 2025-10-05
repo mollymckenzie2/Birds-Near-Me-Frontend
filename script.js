@@ -10,8 +10,20 @@ function formatDate(obsDt) {
   return date.toLocaleString(undefined, options);
 }
 
+// parse obsDt robustly and check if within `days` days of now
+function obsWithinDays(obsDt, days) {
+  if (!obsDt) return false;
+  let d = new Date(obsDt);
+  if (isNaN(d.getTime())) {
+    d = new Date(obsDt.replace(' ', 'T'));
+  }
+  if (isNaN(d.getTime())) return false;
+  const now = new Date();
+  const diffDays = (now - d) / (1000 * 60 * 60 * 24);
+  return diffDays <= days;
+}
 
-function fetchWithRadiusRetries(lat, lng, radiiMiles = [10, 25, 50, 100], maxResults = 15) {
+function fetchWithRadiusRetries(lat, lng, radiiMiles = [3, 5, 10], maxResults = 30, recentDays = 3) {
   
   let attempt = 0;
 
@@ -24,9 +36,10 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = [10, 25, 50, 100], maxRes
     }
 
     const distMiles = radiiMiles[attempt];
-    const distKm = Math.round(distMiles * 1.60934 * 100) / 100; 
+    const distKm = Math.round(distMiles * 1.60934 * 100) / 100;
     const url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=${distKm}&maxResults=${maxResults}`;
-    console.log(`fetchWithRadiusRetries: trying radius ${distMiles} mi (${distKm} km) -> ${url}`);
+
+    console.log(`trying radius ${distMiles} mi (${distKm} km)`);
     birdsDiv.innerHTML = `<p>Searching within ${distMiles} mi...</p>`;
 
     fetch(url)
@@ -36,17 +49,24 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = [10, 25, 50, 100], maxRes
         return res.json();
       })
       .then(data => {
-        console.log('received', data && data.length ? `${data.length} items` : data, `for radius ${distMiles} mi`);
-        if (Array.isArray(data) && data.length > 0) {
-          displayBirds(data, lat, lng);
+        console.log('received', Array.isArray(data) ? `${data.length} items` : data);
+        if (!Array.isArray(data) || data.length === 0) {
+          attempt++;
+          setTimeout(tryNext, 400);
+          return;
+        }
+
+        const recent = data.filter(b => obsWithinDays(b.obsDt, recentDays));
+        console.log('recent filtered count:', recent.length);
+        if (recent.length > 0) {
+          displayBirds(recent, lat, lng);
         } else {
           attempt++;
-          
-          setTimeout(tryNext, 500);
+          setTimeout(tryNext, 400);
         }
       })
       .catch(err => {
-        console.error('Error fetching bird data:', err);
+        console.error('fetch error', err);
         birdsDiv.innerHTML = '<p>Error fetching bird data.</p>';
       });
   }
@@ -55,94 +75,79 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = [10, 25, 50, 100], maxRes
 }
 
 function fetchBirds(lat, lng) {
-  
-  const radiiMiles = [10, 25, 50, 100];
-  fetchWithRadiusRetries(lat, lng, radiiMiles, 15);
+  fetchWithRadiusRetries(lat, lng, [3, 5, 10], 30, 3);
 }
-
 
 function haversineDistanceMiles(lat1, lon1, lat2, lon2) {
   function toRad(x) { return x * Math.PI / 180; }
-  const R = 3959; 
+  const R = 3959;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
 
 function displayBirds(birds, userLat, userLng) {
-  birdsDiv.innerHTML = "";
-
-  console.log('displayBirds called with userLat,userLng', userLat, userLng);
-
+  birdsDiv.innerHTML = '';
+  console.log('displayBirds', birds.length);
   if (!birds || birds.length === 0) {
-    birdsDiv.innerHTML = "<p>No birds found nearby.</p>";
+    birdsDiv.innerHTML = '<p>No birds found nearby.</p>';
     return;
   }
 
   birds.forEach(bird => {
-    console.log('displayBirds: bird', bird);
-    const card = document.createElement("div");
-    card.className = "bird-card";
+    const card = document.createElement('div');
+    card.className = 'bird-card';
 
-    const name = document.createElement("h2");
+    const name = document.createElement('h2');
     name.textContent = bird.comName;
 
-  const count = document.createElement("p");
-  count.className = 'quantity';
-  count.innerHTML = `<span>Quantity:</span> ${bird.howMany}`;
+    const count = document.createElement('p');
+    count.className = 'quantity';
+    count.innerHTML = `<span>Quantity:</span> ${bird.howMany}`;
 
-
-    let distanceText = "";
+    const distanceP = document.createElement('p');
+    distanceP.className = 'distance';
     if (bird.lat && bird.lng && userLat && userLng) {
       const dist = haversineDistanceMiles(userLat, userLng, bird.lat, bird.lng);
-      
-      const distStr = Number(dist).toPrecision(2);
-      distanceText = `<span>Distance Away:</span> ${distStr} mi`;
+      distanceP.innerHTML = `<span>Distance Away:</span> ${Number(dist).toPrecision(2)} mi`;
     } else {
-      distanceText = `<span>Distance Away:</span> Unknown`;
+      distanceP.innerHTML = `<span>Distance Away:</span> Unknown`;
     }
-  const distance = document.createElement("p");
-  distance.className = 'distance';
-  distance.innerHTML = distanceText;
 
-  const seenDate = document.createElement("p");
-  seenDate.className = 'seen';
-  seenDate.innerHTML = `<span>Seen:</span> ${formatDate(bird.obsDt)}`;
+    const seen = document.createElement('p');
+    seen.className = 'seen';
+    seen.innerHTML = `<span>Seen:</span> ${formatDate(bird.obsDt)}`;
 
-  const sciName = document.createElement("p");
-  sciName.className = 'scientific';
-  sciName.innerHTML = `<span>Scientific Name:</span> ${bird.sciName}`;
+    const sci = document.createElement('p');
+    sci.className = 'scientific';
+    sci.innerHTML = `<span>Scientific Name:</span> ${bird.sciName}`;
 
     card.appendChild(name);
     card.appendChild(count);
-    card.appendChild(distance); 
-    card.appendChild(seenDate);
-    card.appendChild(sciName);
+    card.appendChild(distanceP);
+    card.appendChild(seen);
+    card.appendChild(sci);
 
     birdsDiv.appendChild(card);
   });
 }
 
-
 function init() {
-  if ("geolocation" in navigator) {
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        const { latitude, longitude } = position.coords;
-        fetchBirds(latitude, longitude);
-      },
-      error => {
-        console.error("Geolocation error:", error);
-        birdsDiv.innerHTML = "<p>Unable to get your location.</p>";
-      }
-    );
+  console.log('init');
+  if ('geolocation' in navigator) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const { latitude, longitude } = pos.coords;
+      console.log('got location', latitude, longitude);
+      fetchBirds(latitude, longitude);
+    }, err => {
+      console.error('geolocation error', err);
+      birdsDiv.innerHTML = '<p>Unable to get your location.</p>';
+    });
   } else {
-    birdsDiv.innerHTML = "<p>Geolocation is not supported by your browser.</p>";
+    birdsDiv.innerHTML = '<p>Geolocation is not supported by your browser.</p>';
   }
 }
 
-window.addEventListener("load", init);
+window.addEventListener('load', init);
