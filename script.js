@@ -17,11 +17,18 @@ function ensureSearchStatusEl() {
   const statusEl = document.createElement('div');
   statusEl.id = 'search-status';
   statusEl.className = 'compass-container';
-  // make the status fixed at top-center so it's always visible
-  statusEl.style.position = 'fixed';
-  statusEl.style.top = '16px';
-  statusEl.style.left = '50%';
-  statusEl.style.transform = 'translateX(-50%)';
+  // place the status below the page header (if present)
+  const header = document.querySelector('.container h1');
+  if (header && header.parentNode) {
+    // insert after header
+    header.parentNode.insertBefore(statusEl, header.nextSibling);
+  } else {
+    // fallback to a fixed top position
+    statusEl.style.position = 'fixed';
+    statusEl.style.top = '16px';
+    statusEl.style.left = '50%';
+    statusEl.style.transform = 'translateX(-50%)';
+  }
   statusEl.style.display = 'flex';
   statusEl.style.zIndex = '9999';
   statusEl.style.background = '#ffffffcc';
