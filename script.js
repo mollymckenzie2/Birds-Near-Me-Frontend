@@ -11,24 +11,54 @@ function formatDate(obsDt) {
 }
 
 
-function fetchBirds(lat, lng) {
-  const url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=10&maxResults=15`;
+function fetchWithRadiusRetries(lat, lng, radiiMiles = [10, 25, 50, 100], maxResults = 15) {
+  // radiiMiles is an array of radii in miles that we'll present to the user.
+  // Convert each mile value to kilometers when calling the eBird API (which expects km).
+  let attempt = 0;
 
-  console.log('fetchBirds: fetching', url);
-  fetch(url)
-    .then(res => {
-      console.log('fetch response status', res.status);
-      if (!res.ok) throw new Error("Network response was not ok");
-      return res.json();
-    })
-    .then(data => {
-      console.log('fetchBirds: received data', data && data.length ? `${data.length} items` : data);
-      displayBirds(data, lat, lng);
-    })
-    .catch(err => {
-      console.error("Error fetching bird data:", err);
-      birdsDiv.innerHTML = "<p>Error fetching bird data.</p>";
-    });
+  function tryNext() {
+    if (attempt >= radiiMiles.length) {
+      const last = radiiMiles[radiiMiles.length - 1];
+      console.log('fetchWithRadiusRetries: no birds found after all radii');
+      birdsDiv.innerHTML = `<p>no birds found in ${last} miles</p>`;
+      return;
+    }
+
+    const distMiles = radiiMiles[attempt];
+    const distKm = Math.round(distMiles * 1.60934 * 100) / 100; // convert to km, round to 2 decimals
+    const url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=${distKm}&maxResults=${maxResults}`;
+    console.log(`fetchWithRadiusRetries: trying radius ${distMiles} mi (${distKm} km) -> ${url}`);
+    birdsDiv.innerHTML = `<p>Searching within ${distMiles} mi...</p>`;
+
+    fetch(url)
+      .then(res => {
+        console.log('fetch response status', res.status);
+        if (!res.ok) throw new Error('Network response was not ok');
+        return res.json();
+      })
+      .then(data => {
+        console.log('received', data && data.length ? `${data.length} items` : data, `for radius ${distMiles} mi`);
+        if (Array.isArray(data) && data.length > 0) {
+          displayBirds(data, lat, lng);
+        } else {
+          attempt++;
+          // small delay so user can see the status update
+          setTimeout(tryNext, 500);
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching bird data:', err);
+        birdsDiv.innerHTML = '<p>Error fetching bird data.</p>';
+      });
+  }
+
+  tryNext();
+}
+
+function fetchBirds(lat, lng) {
+  // default radii (miles) to try if nearby is empty
+  const radiiMiles = [10, 25, 50, 100];
+  fetchWithRadiusRetries(lat, lng, radiiMiles, 15);
 }
 
 
