@@ -46,6 +46,7 @@ function displayBirds(birds, userLat, userLng) {
   }
 
   birds.forEach(bird => {
+    console.log('bird data:', bird, 'userLat:', userLat, 'userLng:', userLng);
     const card = document.createElement("div");
     card.className = "bird-card";
 
@@ -55,11 +56,11 @@ function displayBirds(birds, userLat, userLng) {
     const count = document.createElement("p");
     count.innerHTML = `<span>Quantity:</span> ${bird.howMany}`;
 
-    // Calculate distance in miles, 2 significant figures
+
     let distanceText = "";
     if (bird.lat && bird.lng && userLat && userLng) {
       const dist = haversineDistanceMiles(userLat, userLng, bird.lat, bird.lng);
-      // Format to 2 significant figures
+      
       const distStr = Number(dist).toPrecision(2);
       distanceText = `<span>Distance:</span> ${distStr} mi`;
     } else {
@@ -76,7 +77,7 @@ function displayBirds(birds, userLat, userLng) {
 
     card.appendChild(name);
     card.appendChild(count);
-    card.appendChild(distance); // Add distance under Quantity
+    card.appendChild(distance); 
     card.appendChild(seenDate);
     card.appendChild(sciName);
 
