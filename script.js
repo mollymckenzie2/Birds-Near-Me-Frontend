@@ -35,9 +35,10 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
     statusEl = document.createElement('div');
     statusEl.id = 'search-status';
     statusEl.className = 'compass-container';
-    // insert at top of birdsDiv parent if possible
+   
     if (birdsDiv && birdsDiv.parentNode) birdsDiv.parentNode.insertBefore(statusEl, birdsDiv);
     else document.body.insertBefore(statusEl, document.body.firstChild);
+    console.log('created search-status element', statusEl);
   }
 
   function showStatus(distMiles) {
@@ -49,10 +50,16 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
     text.textContent = `Searching within ${distMiles} mi`;
     statusEl.appendChild(compass);
     statusEl.appendChild(text);
+    statusEl.style.display = 'flex';
+    console.log('showStatus called for', distMiles);
   }
 
   function hideStatus() {
-    if (statusEl) statusEl.innerHTML = '';
+    if (statusEl) {
+      statusEl.innerHTML = '';
+      statusEl.style.display = 'none';
+      console.log('hideStatus called');
+    }
   }
 
   function tryNext() {
