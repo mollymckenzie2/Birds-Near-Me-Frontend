@@ -20,12 +20,14 @@ function ensureSearchStatusEl() {
   // place the status below the page header (if present)
   const header = document.querySelector('.container h1');
   if (header && header.parentNode) {
-    // insert after header
+    // insert after header and add margin so it doesn't overlap
     header.parentNode.insertBefore(statusEl, header.nextSibling);
+    statusEl.style.position = 'relative';
+    statusEl.style.marginTop = '12px';
   } else {
-    // fallback to a fixed top position
+    // fallback to a fixed top position but moved lower
     statusEl.style.position = 'fixed';
-    statusEl.style.top = '16px';
+    statusEl.style.top = '72px';
     statusEl.style.left = '50%';
     statusEl.style.transform = 'translateX(-50%)';
   }
