@@ -6,9 +6,9 @@ from PIL import Image
 input_folder = "input"
 output_folder = "output"
 
-PIXEL_SIZE = 64
+PIXEL_SIZE = 32
 
-SCALE = 6 
+SCALE = 4
 
 os.makedirs(output_folder, exist_ok=True)
 os.makedirs(input_folder, exist_ok=True)  

@@ -41,7 +41,8 @@ h1 {
   width: 140px; 
   object-fit: contain;
   border-radius: 6px;
-  background: #f6f6f6;
+  background: transparent; 
+  
 }
 
 .bird-card h2 {
