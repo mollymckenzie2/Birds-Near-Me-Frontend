@@ -6,7 +6,7 @@ from PIL import Image
 input_folder = "input"
 output_folder = "output"
 
-PIXEL_SIZE = 32
+PIXEL_SIZE = 64
 
 SCALE = 4
 
