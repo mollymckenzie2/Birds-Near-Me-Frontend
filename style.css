@@ -135,7 +135,9 @@ h1 {
 
 .bird-card h2 {
   margin: 0 0 8px 0;
-  font-size: 0.4em;
+  /* smaller, compact pixel title for bird names */
+  font-size: 0.85rem;
+  line-height: 1.1;
   font-family: 'Press Start 2P', cursive, monospace;
   letter-spacing: 0.5px;
   color: #333;
