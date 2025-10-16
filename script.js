@@ -33,13 +33,6 @@ function ensureSearchStatusEl() {
     statusEl.style.left = '50%';
     statusEl.style.transform = 'translateX(-50%)';
   }
-  statusEl.style.display = 'flex';
-  statusEl.style.zIndex = '9999';
-  statusEl.style.background = '#ffffffcc';
-  statusEl.style.padding = '8px 12px';
-  statusEl.style.border = '2px solid #28a745';
-  statusEl.style.borderRadius = '8px';
-  statusEl.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
 
   const container = birdsDiv && birdsDiv.parentNode ? birdsDiv.parentNode : document.body;
   if (!inserted) container.insertBefore(statusEl, birdsDiv || container.firstChild);
