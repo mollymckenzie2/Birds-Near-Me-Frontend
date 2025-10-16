@@ -133,15 +133,16 @@ h1 {
  
 }
 
-.bird-card h2 {
+.bird-card h2,
+.bird-card > h2 {
   margin: 0 0 8px 0;
-  /* smaller, compact pixel title for bird names */
-  font-size: 0.85rem;
-  line-height: 1.1;
-  font-family: 'Press Start 2P', cursive, monospace;
-  letter-spacing: 0.5px;
-  color: #333;
-  text-shadow: none;
+  /* smaller, forced pixel title for bird names */
+  font-size: 0.7rem !important;
+  line-height: 1.05 !important;
+  font-family: 'Press Start 2P', cursive, monospace !important;
+  letter-spacing: 0.4px !important;
+  color: #333 !important;
+  text-shadow: none !important;
   word-break: break-word;
 }
 
