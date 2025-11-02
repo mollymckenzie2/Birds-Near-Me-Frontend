@@ -251,6 +251,16 @@ h1 {
   text-align: center;
 }
 
+/* Location display under the title */
+.location-display {
+  font-family: 'Press Start 2P', cursive, monospace;
+  font-size: 0.8rem;
+  color: #222;
+  text-align: center;
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
 .compass {
   width: 56px;
   height: 56px;

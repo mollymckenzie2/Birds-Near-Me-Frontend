@@ -325,12 +325,59 @@ function displayBirds(birds, userLat, userLng) {
   }, 80);
 }
 
+
+function ensureLocationEl() {
+  let el = document.getElementById('location-display');
+  if (el) return el;
+  const header = document.querySelector('.container h1');
+  el = document.createElement('div');
+  el.id = 'location-display';
+  el.className = 'location-display';
+  if (header && header.parentNode) {
+    header.parentNode.insertBefore(el, header.nextSibling);
+  } else {
+    document.body.insertBefore(el, document.body.firstChild);
+  }
+  return el;
+}
+
+
+function showLocationName(lat, lng) {
+  const el = ensureLocationEl();
+  el.textContent = 'Location: locating...';
+ 
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`;
+  fetch(url)
+    .then(res => {
+      if (!res.ok) throw new Error('geo response not ok');
+      return res.json();
+    })
+    .then(data => {
+      let place = '';
+      if (data && data.address) {
+        const a = data.address;
+        place = a.city || a.town || a.village || a.hamlet || a.county || a.state || '';
+      }
+      if (place) {
+        el.textContent = `Location: ${place}`;
+      } else {
+        el.textContent = `Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      }
+    })
+    .catch(err => {
+      console.warn('reverse geocode failed', err);
+      el.textContent = `Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    });
+}
+
 function init() {
   console.log('init');
   if ('geolocation' in navigator) {
     navigator.geolocation.getCurrentPosition(pos => {
       const { latitude, longitude } = pos.coords;
       console.log('got location', latitude, longitude);
+      // show a friendly location line under the title, then fetch birds
+      showLocationName(latitude, longitude);
       fetchBirds(latitude, longitude);
     }, err => {
       console.error('geolocation error', err);
