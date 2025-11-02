@@ -9,36 +9,33 @@
   display: block;
   width: 9.375em;
   height: 9.375em;
-  image-rendering: pixelated;
   font-family: 'Press Start 2P', cursive, monospace;
 }
 
-/* Pixelate the loader/compass SVG by using nearest-neighbor scaling
-   and vendor fallbacks. The SVG is rendered at smaller CSS size and
-   then scaled up for a pixel-art look. */
+
 .pl.pixelated-compass,
 .pixel-loader-container svg.pixelated-compass {
-  /* Ensure scaling uses nearest-neighbor */
+
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
-  -ms-interpolation-mode: nearest-neighbor; /* IE */
+  -ms-interpolation-mode: nearest-neighbor; 
   transform-origin: center;
-  /* The SVG is set to a smaller width/height in markup and scaled via transform */
+  
 }
 
-/* Make the pixelated compass render at a controlled small size so it doesn't overlap page title */
+
 .pl.pixelated-compass {
-  /* Render small and scale up to get chunky pixels. Adjust scale to taste. */
-  width: 32px !important;
-  height: 32px !important;
+  
+  width: 24px !important;
+  height: 24px !important;
   display: inline-block;
-  transform: scale(2);
+  transform: none !important;
   transform-origin: center;
-  margin-bottom: 8px; /* space between title and loader */
+  margin-bottom: 8px; 
 }
 
-/* If a pure CSS compass element is used elsewhere, make it crisp too */
+
 .compass {
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
