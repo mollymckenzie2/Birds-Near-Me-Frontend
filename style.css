@@ -162,6 +162,30 @@ h1 {
  
 }
 
+
+.bird-thumb {
+  will-change: transform;
+  cursor: pointer;
+}
+
+@keyframes bounce {
+  0% { transform: translateY(0); }
+  30% { transform: translateY(-14px); }
+  50% { transform: translateY(0); }
+  70% { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
+}
+
+.bird-thumb.bounce {
+  animation: bounce 700ms cubic-bezier(.28,.84,.42,1) 1;
+}
+
+/* Hover/active also trigger bounce */
+.bird-thumb:hover,
+.bird-thumb:active {
+  animation: bounce 700ms cubic-bezier(.28,.84,.42,1) 1;
+}
+
 .bird-card h2,
 .bird-card > h2 {
   margin: 0 0 8px 0;
@@ -212,8 +236,7 @@ h1 {
   margin: 12px 0 18px 0;
 }
 
-/* Remove the white box / green border the JS previously added via inline styles
-   and ensure the loading text uses the same font as the page title. */
+
 .compass-container {
   background: transparent !important;
   border: none !important;

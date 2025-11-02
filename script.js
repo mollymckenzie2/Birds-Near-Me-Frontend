@@ -303,6 +303,27 @@ function displayBirds(birds, userLat, userLng) {
 
     birdsDiv.appendChild(card);
   });
+
+  // Trigger a single collective bounce once when birds are rendered.
+  // Also attach click handlers so clicking any thumbnail re-triggers the bounce.
+  setTimeout(() => {
+    const imgs = birdsDiv.querySelectorAll('.bird-thumb');
+    imgs.forEach(img => {
+      // only animate visible images
+      if (img.style.display === 'none') return;
+      img.classList.add('bounce');
+      // remove the class after animation so hover/click can retrigger
+      img.addEventListener('animationend', () => img.classList.remove('bounce'), { once: true });
+
+      // clicking re-triggers the bounce
+      img.addEventListener('click', () => {
+        img.classList.remove('bounce');
+        // force reflow to allow re-adding the class
+        void img.offsetWidth;
+        img.classList.add('bounce');
+      });
+    });
+  }, 80);
 }
 
 function init() {
