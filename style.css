@@ -130,7 +130,8 @@ h1 {
   letter-spacing: 1px;
   color: #222;
   text-shadow: 2px 2px 0 #fff, 4px 4px 0 #000;
-  margin-bottom: 96px;
+ 
+  margin-bottom: 0;
 }
 
 
@@ -251,14 +252,14 @@ h1 {
   text-align: center;
 }
 
-/* Location display under the title */
+
 .location-display {
   font-family: 'Press Start 2P', cursive, monospace;
   font-size: 0.8rem;
   color: #222;
   text-align: center;
-  margin-top: 8px;
-  margin-bottom: 12px;
+  margin-top: 4px; 
+  margin-bottom: 96px; 
 }
 
 .compass {
@@ -279,7 +280,7 @@ h1 {
   top: 50%;
   width: 4px;
   height: 22px;
-  background: #e74c3c; /* needle tip */
+  background: #e74c3c; 
   transform-origin: 50% 80%;
   transform: translate(-50%, -50%) rotate(0deg);
   border-radius: 2px;
