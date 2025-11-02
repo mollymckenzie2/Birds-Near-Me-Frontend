@@ -27,6 +27,17 @@
   /* The SVG is set to a smaller width/height in markup and scaled via transform */
 }
 
+/* Make the pixelated compass render at a controlled small size so it doesn't overlap page title */
+.pl.pixelated-compass {
+  /* Render small and scale up to get chunky pixels. Adjust scale to taste. */
+  width: 32px !important;
+  height: 32px !important;
+  display: inline-block;
+  transform: scale(2);
+  transform-origin: center;
+  margin-bottom: 8px; /* space between title and loader */
+}
+
 /* If a pure CSS compass element is used elsewhere, make it crisp too */
 .compass {
   image-rendering: pixelated;

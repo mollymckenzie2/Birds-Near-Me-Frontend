@@ -51,7 +51,7 @@ function showSearchStatus(statusText) {
   const loaderDiv = document.createElement('div');
   loaderDiv.className = 'pixel-loader-container';
   loaderDiv.innerHTML = `
-  <svg class="pl pixelated-compass" viewBox="0 0 160 160" width="48px" height="48px" xmlns="http://www.w3.org/2000/svg" style="transform-origin: center; transform: scale(2); image-rendering: pixelated; shape-rendering: crispEdges;">
+  <svg class="pl pixelated-compass" viewBox="0 0 160 160" width="32" height="32" xmlns="http://www.w3.org/2000/svg" style="image-rendering: pixelated; shape-rendering: crispEdges;">
       <defs>
         <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#000"></stop>
