@@ -35,11 +35,7 @@ function ensureSearchStatusEl() {
   }
   statusEl.style.display = 'flex';
   statusEl.style.zIndex = '9999';
-  statusEl.style.background = '#ffffffcc';
-  statusEl.style.padding = '8px 12px';
-  statusEl.style.border = '2px solid #28a745';
-  statusEl.style.borderRadius = '8px';
-  statusEl.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
+ 
 
   const container = birdsDiv && birdsDiv.parentNode ? birdsDiv.parentNode : document.body;
   if (!inserted) container.insertBefore(statusEl, birdsDiv || container.firstChild);
@@ -51,11 +47,11 @@ function ensureSearchStatusEl() {
 function showSearchStatus(statusText) {
   const statusEl = ensureSearchStatusEl();
   statusEl.innerHTML = '';
-  // Insert animated SVG loader
+  
   const loaderDiv = document.createElement('div');
   loaderDiv.className = 'pixel-loader-container';
   loaderDiv.innerHTML = `
-    <svg class="pl" viewBox="0 0 160 160" width="96px" height="96px" xmlns="http://www.w3.org/2000/svg">
+  <svg class="pl pixelated-compass" viewBox="0 0 160 160" width="48px" height="48px" xmlns="http://www.w3.org/2000/svg" style="transform-origin: center; transform: scale(2); image-rendering: pixelated; shape-rendering: crispEdges;">
       <defs>
         <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#000"></stop>

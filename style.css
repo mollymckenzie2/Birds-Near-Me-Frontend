@@ -13,6 +13,27 @@
   font-family: 'Press Start 2P', cursive, monospace;
 }
 
+/* Pixelate the loader/compass SVG by using nearest-neighbor scaling
+   and vendor fallbacks. The SVG is rendered at smaller CSS size and
+   then scaled up for a pixel-art look. */
+.pl.pixelated-compass,
+.pixel-loader-container svg.pixelated-compass {
+  /* Ensure scaling uses nearest-neighbor */
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  -ms-interpolation-mode: nearest-neighbor; /* IE */
+  transform-origin: center;
+  /* The SVG is set to a smaller width/height in markup and scaled via transform */
+}
+
+/* If a pure CSS compass element is used elsewhere, make it crisp too */
+.compass {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
 .pl__arrows,
 .pl__ring-rotate,
 .pl__ring-stroke,
@@ -181,6 +202,22 @@ h1 {
   align-items: center;
   gap: 8px;
   margin: 12px 0 18px 0;
+}
+
+/* Remove the white box / green border the JS previously added via inline styles
+   and ensure the loading text uses the same font as the page title. */
+.compass-container {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.loading-text {
+  font-family: 'Press Start 2P', cursive, monospace;
+  font-size: 0.8rem;
+  color: #222;
+  text-align: center;
 }
 
 .compass {
