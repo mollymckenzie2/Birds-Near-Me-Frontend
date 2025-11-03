@@ -258,8 +258,13 @@ h1 {
   font-size: 0.8rem;
   color: #222;
   text-align: center;
-  margin-top: 4px; 
-  margin-bottom: 96px; 
+  margin-top: 10px !important;
+  margin-bottom: 96px;
+}
+
+
+h1 + .location-display {
+  margin-top: 10px !important;
 }
 
 .compass {
