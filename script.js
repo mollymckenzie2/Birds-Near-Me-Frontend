@@ -355,13 +355,16 @@ function displayBirds(birds, userLat, userLng) {
 function updateFilterApplyVisibility() {
   const applyBtn = document.getElementById('apply-filters');
   const resetBtn = document.getElementById('reset-filters');
+  const filtersBtn = document.getElementById('filters-btn');
   if (!applyBtn || !resetBtn) return;
   if (initialLoadComplete) {
     applyBtn.classList.remove('hidden');
     resetBtn.classList.remove('hidden');
+    filtersBtn && filtersBtn.classList.remove('hidden');
   } else {
     applyBtn.classList.add('hidden');
     resetBtn.classList.add('hidden');
+    filtersBtn && filtersBtn.classList.add('hidden');
   }
 }
 
@@ -449,6 +452,8 @@ function initFiltersUI() {
 
   if (!btn || !panel) return;
 
+  // hide the Filters button until initial load completes
+  btn.classList.add('hidden');
   btn.addEventListener('click', openFilterPanel);
   backdrop.addEventListener('click', closeFilterPanel);
   closeBtn && closeBtn.addEventListener('click', closeFilterPanel);
