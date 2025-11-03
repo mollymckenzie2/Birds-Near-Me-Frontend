@@ -388,9 +388,7 @@ h1 + .location-display {
 .filter-panel.open { transform: translateX(0%); }
 .filter-panel-inner { padding: 18px; }
 .filter-panel h3 { font-family: 'Press Start 2P', cursive, monospace; margin-top: 2px; margin-bottom: 18px; text-align: center; }
-/* Make the panel title more prominent and centered, and add space to the following section */
 
-/* Style the section labels to match the Filters button (black background, white text) */
 .filter-section label {
   display: inline-block;
   background: #222;
@@ -428,19 +426,19 @@ h1 + .location-display {
 .filter-section label { display: inline-block; font-weight: bold; margin-bottom: 8px; }
 .filter-coords { font-size: 0.8rem; color: #444; margin-top: 6px; }
 
-/* More space between the map and the next section */
+
 .filter-section { margin-bottom: 20px; }
 .filter-section label { display: inline-block; font-weight: bold; margin-bottom: 8px; }
 .filter-coords { font-size: 0.8rem; color: #444; margin-top: 6px; }
 
-/* More space between the map and the next section */
+
 #filter-map { margin-bottom: 18px; }
  .filter-time button { margin-right: 8px; margin-bottom: 8px; padding: 8px 10px; border-radius: 6px; border: 1px solid #ddd; background: #fafafa; cursor: pointer; }
- .filter-time button.selected { background: #222; color: #fff; border-color: #111; }
+ .filter-time button.selected { background: #1c570c; color: #fff; border-color: #12410a; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.08); }
  .apply-filters { display: block; width: 100%; padding: 12px; background: #1c570c; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 8px; }
  .hint { font-size: 0.9rem; color: #666; margin-top: 6px; margin-bottom: 8px; }
 
-/* Make the distance input text match the hint/coords small text */
+
 #filter-distance {
   font-family: Arial, sans-serif !important;
   font-size: 0.9rem !important;
@@ -471,7 +469,7 @@ h1 + .location-display {
 }
 .reset-filters:active { transform: translateY(1px); }
 
-/* Utility to hide controls until initial load */
+
 .hidden { display: none !important; }
 
 @media (max-width: 600px) {

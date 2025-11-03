@@ -8,7 +8,7 @@ const SEARCH_RADII_MILES = [3, 5, 10];
 
 
 
-// Filter state and UI globals
+
 let userLat = null;
 let userLng = null;
 let filtersApplied = false;
