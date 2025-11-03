@@ -387,7 +387,19 @@ h1 + .location-display {
 }
 .filter-panel.open { transform: translateX(0%); }
 .filter-panel-inner { padding: 18px; }
-.filter-panel h3 { font-family: 'Press Start 2P', cursive, monospace; margin-top: 2px; margin-bottom: 10px; }
+.filter-panel h3 { font-family: 'Press Start 2P', cursive, monospace; margin-top: 2px; margin-bottom: 18px; text-align: center; }
+/* Make the panel title more prominent and centered, and add space to the following section */
+
+/* Style the section labels to match the Filters button (black background, white text) */
+.filter-section label {
+  display: inline-block;
+  background: #222;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  margin-bottom: 10px;
+}
 /* Use Press Start 2P for all filter panel text */
 .filter-panel, .filter-panel * {
   font-family: 'Press Start 2P', cursive, monospace;
@@ -401,13 +413,16 @@ h1 + .location-display {
   font-size: 22px;
   cursor: pointer;
 }
-.filter-section { margin-bottom: 14px; }
-.filter-section label { display: block; font-weight: bold; margin-bottom: 6px; }
+.filter-section { margin-bottom: 20px; }
+.filter-section label { display: inline-block; font-weight: bold; margin-bottom: 8px; }
 .filter-coords { font-size: 0.8rem; color: #444; margin-top: 6px; }
+
+/* More space between the map and the next section */
+#filter-map { margin-bottom: 20px; }
 .filter-time button { margin-right: 8px; margin-bottom: 8px; padding: 8px 10px; border-radius: 6px; border: 1px solid #ddd; background: #fafafa; cursor: pointer; }
 .filter-time button.selected { background: #222; color: #fff; border-color: #111; }
 .apply-filters { display: block; width: 100%; padding: 12px; background: #28a745; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 8px; }
-.hint { font-size: 0.8rem; color: #666; margin-top: 6px; }
+.hint { font-size: 0.8rem; color: #666; margin-top: 12px; margin-bottom: 18px; }
 
 
 .no-birds-message {
