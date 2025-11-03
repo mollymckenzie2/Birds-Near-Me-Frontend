@@ -15,6 +15,7 @@ let filtersApplied = false;
 const filterState = { lat: null, lng: null, distance: 10, days: 3 };
 let filterMap = null;
 let filterMarker = null;
+let initialLoadComplete = false;
 
 let searchStatusEl = null;
 function ensureSearchStatusEl() {
@@ -173,6 +174,9 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
       const last = radiiMiles[radiiMiles.length - 1];
       console.log('fetchWithRadiusRetries: no birds found after all radii');
       hideSearchStatus();
+      // consider initial load as complete (no results)
+      initialLoadComplete = true;
+      updateFilterApplyVisibility();
       if (filtersApplied) {
         birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
       } else {
@@ -220,6 +224,9 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
         console.error('fetch error', err);
         hideSearchStatus();
         birdsDiv.innerHTML = '<p>Error fetching bird data.</p>';
+        
+        initialLoadComplete = true;
+        updateFilterApplyVisibility();
       });
   }
 
@@ -245,6 +252,9 @@ function displayBirds(birds, userLat, userLng) {
   console.log('displayBirds', birds.length);
   if (!birds || birds.length === 0) {
     birdsDiv.innerHTML = '<p>No birds found nearby.</p>';
+    // initial rendering completed (no birds)
+    initialLoadComplete = true;
+    updateFilterApplyVisibility();
     return;
   }
 
@@ -336,6 +346,23 @@ function displayBirds(birds, userLat, userLng) {
       });
     });
   }, 80);
+
+  // initial rendering completed successfully
+  initialLoadComplete = true;
+  updateFilterApplyVisibility();
+}
+
+function updateFilterApplyVisibility() {
+  const applyBtn = document.getElementById('apply-filters');
+  const resetBtn = document.getElementById('reset-filters');
+  if (!applyBtn || !resetBtn) return;
+  if (initialLoadComplete) {
+    applyBtn.classList.remove('hidden');
+    resetBtn.classList.remove('hidden');
+  } else {
+    applyBtn.classList.add('hidden');
+    resetBtn.classList.add('hidden');
+  }
 }
 
 
@@ -428,6 +455,10 @@ function initFiltersUI() {
   applyBtn && applyBtn.addEventListener('click', applyFilters);
   const resetBtn = document.getElementById('reset-filters');
   resetBtn && resetBtn.addEventListener('click', resetFilters);
+
+  // hide apply/reset until initial load completes
+  applyBtn && applyBtn.classList.add('hidden');
+  resetBtn && resetBtn.classList.add('hidden');
 
   // time buttons
   if (timeGroup) {

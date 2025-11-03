@@ -388,6 +388,10 @@ h1 + .location-display {
 .filter-panel.open { transform: translateX(0%); }
 .filter-panel-inner { padding: 18px; }
 .filter-panel h3 { font-family: 'Press Start 2P', cursive, monospace; margin-top: 2px; margin-bottom: 10px; }
+/* Use Press Start 2P for all filter panel text */
+.filter-panel, .filter-panel * {
+  font-family: 'Press Start 2P', cursive, monospace;
+}
 .close-filters {
   position: absolute;
   right: 8px;
@@ -425,6 +429,9 @@ h1 + .location-display {
   cursor: pointer;
 }
 .reset-filters:active { transform: translateY(1px); }
+
+/* Utility to hide controls until initial load */
+.hidden { display: none !important; }
 
 @media (max-width: 600px) {
   .filter-panel { width: 92%; }
