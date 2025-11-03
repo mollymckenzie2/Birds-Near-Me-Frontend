@@ -8,6 +8,14 @@ const SEARCH_RADII_MILES = [3, 5, 10];
 
 
 
+// Filter state and UI globals
+let userLat = null;
+let userLng = null;
+let filtersApplied = false;
+const filterState = { lat: null, lng: null, distance: 10, days: 3 };
+let filterMap = null;
+let filterMarker = null;
+
 let searchStatusEl = null;
 function ensureSearchStatusEl() {
   if (searchStatusEl) return searchStatusEl;
@@ -164,7 +172,12 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
     if (attempt >= radiiMiles.length) {
       const last = radiiMiles[radiiMiles.length - 1];
       console.log('fetchWithRadiusRetries: no birds found after all radii');
-      birdsDiv.innerHTML = `<p>no birds found in ${last} miles</p>`;
+      hideSearchStatus();
+      if (filtersApplied) {
+        birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
+      } else {
+        birdsDiv.innerHTML = `<p>no birds found in ${last} miles</p>`;
+      }
       return;
     }
 
@@ -376,16 +389,189 @@ function init() {
     navigator.geolocation.getCurrentPosition(pos => {
       const { latitude, longitude } = pos.coords;
       console.log('got location', latitude, longitude);
-      // show a friendly location line under the title, then fetch birds
+      // store for filters default
+      userLat = latitude;
+      userLng = longitude;
+      filterState.lat = latitude;
+      filterState.lng = longitude;
+      
       showLocationName(latitude, longitude);
       fetchBirds(latitude, longitude);
+      
+      initFiltersUI();
     }, err => {
       console.error('geolocation error', err);
       birdsDiv.innerHTML = '<p>Unable to get your location.</p>';
+      // still try to wire filters UI (map will use default coords)
+      initFiltersUI();
     });
   } else {
     birdsDiv.innerHTML = '<p>Geolocation is not supported by your browser.</p>';
+    initFiltersUI();
   }
 }
+
+// ------------------ Filters UI logic ------------------
+function initFiltersUI() {
+  const btn = document.getElementById('filters-btn');
+  const panel = document.getElementById('filter-panel');
+  const backdrop = document.getElementById('filter-backdrop');
+  const closeBtn = document.getElementById('close-filters');
+  const applyBtn = document.getElementById('apply-filters');
+  const timeGroup = document.getElementById('filter-time');
+
+  if (!btn || !panel) return;
+
+  btn.addEventListener('click', openFilterPanel);
+  backdrop.addEventListener('click', closeFilterPanel);
+  closeBtn && closeBtn.addEventListener('click', closeFilterPanel);
+  applyBtn && applyBtn.addEventListener('click', applyFilters);
+  const resetBtn = document.getElementById('reset-filters');
+  resetBtn && resetBtn.addEventListener('click', resetFilters);
+
+  // time buttons
+  if (timeGroup) {
+    timeGroup.addEventListener('click', (ev) => {
+      const t = ev.target;
+      if (!t || !t.dataset) return;
+      const days = parseFloat(t.dataset.days);
+      if (isNaN(days)) return;
+      // set selection
+      timeGroup.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+      t.classList.add('selected');
+      filterState.days = days;
+    });
+  }
+}
+
+function resetFilters() {
+  // clear applied filters and reset UI to defaults
+  filtersApplied = false;
+  filterState.distance = 10;
+  filterState.days = 3;
+  filterState.lat = userLat || null;
+  filterState.lng = userLng || null;
+
+  // update UI elements
+  const distEl = document.getElementById('filter-distance');
+  if (distEl) distEl.value = filterState.distance;
+  const timeGroup = document.getElementById('filter-time');
+  if (timeGroup) {
+    timeGroup.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+  }
+
+  // reset marker/map to user location or filterState
+  if (filterMap) {
+    const lat = filterState.lat || 39.5;
+    const lng = filterState.lng || -98.35;
+    filterMap.setView([lat, lng], 8);
+    if (filterMarker) {
+      filterMarker.setLatLng([lat, lng]);
+    } else {
+      filterMarker = L.marker([lat, lng], { draggable: true }).addTo(filterMap);
+    }
+    updateFilterCoordsText(lat, lng);
+  }
+
+  // close panel and re-run default fetch
+  closeFilterPanel();
+  hideSearchStatus();
+  const lat = userLat || filterState.lat;
+  const lng = userLng || filterState.lng;
+  if (lat && lng) {
+    // restore default search radii and recentDays
+    fetchWithRadiusRetries(lat, lng, [3, 5, 10], 30, 3);
+  }
+}
+
+function openFilterPanel() {
+  const panel = document.getElementById('filter-panel');
+  const backdrop = document.getElementById('filter-backdrop');
+  if (!panel) return;
+  panel.classList.add('open');
+  backdrop && backdrop.classList.add('open');
+  panel.setAttribute('aria-hidden', 'false');
+  backdrop && backdrop.setAttribute('aria-hidden', 'false');
+  // initialize map if needed
+  setTimeout(() => initFilterMap(), 120);
+}
+
+function closeFilterPanel() {
+  const panel = document.getElementById('filter-panel');
+  const backdrop = document.getElementById('filter-backdrop');
+  if (!panel) return;
+  panel.classList.remove('open');
+  backdrop && backdrop.classList.remove('open');
+  panel.setAttribute('aria-hidden', 'true');
+  backdrop && backdrop.setAttribute('aria-hidden', 'true');
+}
+
+function initFilterMap() {
+  // requires Leaflet loaded
+  const mapEl = document.getElementById('filter-map');
+  if (!mapEl || typeof L === 'undefined') return;
+  if (filterMap) {
+    filterMap.invalidateSize && filterMap.invalidateSize();
+    return;
+  }
+  const lat = filterState.lat || userLat || 39.5;
+  const lng = filterState.lng || userLng || -98.35;
+  filterMap = L.map(mapEl, { center: [lat, lng], zoom: 8, scrollWheelZoom: true });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(filterMap);
+
+  filterMarker = L.marker([lat, lng], { draggable: true }).addTo(filterMap);
+  updateFilterCoordsText(lat, lng);
+
+  filterMap.on('click', (ev) => {
+    const { lat: clickLat, lng: clickLng } = ev.latlng;
+    if (filterMarker) filterMarker.setLatLng([clickLat, clickLng]);
+    else filterMarker = L.marker([clickLat, clickLng], { draggable: true }).addTo(filterMap);
+    filterState.lat = clickLat;
+    filterState.lng = clickLng;
+    updateFilterCoordsText(clickLat, clickLng);
+  });
+
+  if (filterMarker) {
+    filterMarker.on('dragend', () => {
+      const p = filterMarker.getLatLng();
+      filterState.lat = p.lat; filterState.lng = p.lng;
+      updateFilterCoordsText(p.lat, p.lng);
+    });
+  }
+}
+
+function updateFilterCoordsText(lat, lng) {
+  const el = document.getElementById('filter-coords');
+  if (!el) return;
+  el.textContent = `Lat: ${Number(lat).toFixed(4)}, Lon: ${Number(lng).toFixed(4)}`;
+}
+
+function applyFilters() {
+  const distEl = document.getElementById('filter-distance');
+  const panel = document.getElementById('filter-panel');
+  let dist = 10;
+  if (distEl) dist = Number(distEl.value) || 10;
+  if (dist > 100) dist = 100;
+  filterState.distance = dist;
+
+  // choose location (filterState or user's location fallback)
+  const lat = filterState.lat || userLat;
+  const lng = filterState.lng || userLng;
+  if (!lat || !lng) {
+    alert('No location selected or available for filters.');
+    return;
+  }
+
+  filtersApplied = true;
+  showSearchStatus('Applying filters');
+  // close UI
+  closeFilterPanel();
+  // call the fetcher with a single radius: the distance typed by the user
+  fetchWithRadiusRetries(lat, lng, [filterState.distance], 100, filterState.days);
+}
+
+// ------------------------------------------------------
 
 window.addEventListener('load', init);

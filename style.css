@@ -340,3 +340,92 @@ h1 + .location-display {
     grid-template-columns: 1fr;
   }
 }
+
+
+.controls {
+  text-align: center;
+  margin-bottom: 18px;
+}
+.filters-btn {
+  font-family: 'Press Start 2P', cursive, monospace;
+  font-size: 0.8rem;
+  padding: 10px 18px;
+  background: #222;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+.filters-btn:active { transform: translateY(1px); }
+
+
+.filter-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+  z-index: 1200;
+}
+.filter-backdrop.open { opacity: 1; pointer-events: auto; }
+
+.filter-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  width: 360px;
+  max-width: calc(100% - 40px);
+  background: #fff;
+  box-shadow: -8px 0 24px rgba(0,0,0,0.15);
+  transform: translateX(110%);
+  transition: transform 300ms cubic-bezier(.2,.9,.2,1);
+  z-index: 1300;
+  overflow-y: auto;
+}
+.filter-panel.open { transform: translateX(0%); }
+.filter-panel-inner { padding: 18px; }
+.filter-panel h3 { font-family: 'Press Start 2P', cursive, monospace; margin-top: 2px; margin-bottom: 10px; }
+.close-filters {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+}
+.filter-section { margin-bottom: 14px; }
+.filter-section label { display: block; font-weight: bold; margin-bottom: 6px; }
+.filter-coords { font-size: 0.8rem; color: #444; margin-top: 6px; }
+.filter-time button { margin-right: 8px; margin-bottom: 8px; padding: 8px 10px; border-radius: 6px; border: 1px solid #ddd; background: #fafafa; cursor: pointer; }
+.filter-time button.selected { background: #222; color: #fff; border-color: #111; }
+.apply-filters { display: block; width: 100%; padding: 12px; background: #28a745; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 8px; }
+.hint { font-size: 0.8rem; color: #666; margin-top: 6px; }
+
+
+.no-birds-message {
+  text-align: center;
+  font-family: 'Press Start 2P', cursive, monospace;
+  color: #b33;
+  margin: 24px 0;
+}
+
+.reset-filters {
+  display: inline-block;
+  margin-bottom: 8px;
+  margin-right: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.reset-filters:active { transform: translateY(1px); }
+
+@media (max-width: 600px) {
+  .filter-panel { width: 92%; }
+}

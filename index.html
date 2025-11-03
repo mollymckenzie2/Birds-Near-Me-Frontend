@@ -6,11 +6,16 @@
   <title>Birds Seen Near Me</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <!-- Leaflet for small clickable map in filters -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-sA+e2Yq3YfKkE2YwP3rEw3JfGQ5y9y+g0x0kzj2v+gI=" crossorigin="" />
 </head>
 <body>
   <div class="container">
     <h1>Birds Seen Near You</h1>
 
+    <div id="controls" class="controls">
+      <button id="filters-btn" class="filters-btn">Filters</button>
+    </div>
 
     <div id="birds" class="birds-grid"></div>
 
@@ -19,6 +24,44 @@
     </div>
   </div>
 
+  <!-- Filter side panel (hidden by default) -->
+  <div id="filter-backdrop" class="filter-backdrop" aria-hidden="true"></div>
+  <aside id="filter-panel" class="filter-panel" aria-hidden="true">
+    <div class="filter-panel-inner">
+      <button id="close-filters" class="close-filters" aria-label="Close filters">×</button>
+      <h3>Filters</h3>
+
+      <div class="filter-section">
+        <label>Location</label>
+        <div id="filter-map" style="height:240px"></div>
+        <div id="filter-coords" class="filter-coords">Click on the map to set location</div>
+      </div>
+
+      <div class="filter-section">
+        <label for="filter-distance">Distance (miles)</label>
+        <input id="filter-distance" type="number" min="1" max="100" value="10" />
+        <div class="hint">Max 100 miles</div>
+      </div>
+
+      <div class="filter-section">
+        <label>Time</label>
+        <div id="filter-time" class="filter-time">
+          <button data-days="0.5">12 hours</button>
+          <button data-days="1">1 day</button>
+          <button data-days="2">2 days</button>
+          <button data-days="7">last week</button>
+        </div>
+      </div>
+
+      <div class="filter-actions">
+        <button id="reset-filters" class="reset-filters">Reset Filters</button>
+        <button id="apply-filters" class="apply-filters">Apply Filters</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Leaflet script (for the filter map) -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-o9N1j8B/nkQb9D9Q4W3Q1x3q2Zk9s8m4p2s9v+8H+Xk=" crossorigin=""></script>
   <script src="script.js"></script>
 </body>
 </html>
