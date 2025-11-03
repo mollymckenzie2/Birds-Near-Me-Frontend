@@ -325,7 +325,7 @@ h1 + .location-display {
 .attribution {
   text-align: center;
   margin-top: 20px;
-  font-size: 0.8em;
+  margin-bottom: 36px; 
 }
 
 
@@ -411,9 +411,9 @@ h1 + .location-display {
 .filter-panel .hint,
 .filter-panel #reset-filters,
 .filter-panel .leaflet-control-attribution {
-  font-family: Arial, sans-serif !important;
-  font-size: 0.9em !important;
-  color: #555 !important;
+  font-family: Arial, sans-serif !important; 
+  font-size: 0.9em !important; 
+  color: #555 !important; 
 }
 .close-filters {
   position: absolute;
@@ -429,11 +429,26 @@ h1 + .location-display {
 .filter-coords { font-size: 0.8rem; color: #444; margin-top: 6px; }
 
 /* More space between the map and the next section */
-#filter-map { margin-bottom: 20px; }
-.filter-time button { margin-right: 8px; margin-bottom: 8px; padding: 8px 10px; border-radius: 6px; border: 1px solid #ddd; background: #fafafa; cursor: pointer; }
-.filter-time button.selected { background: #222; color: #fff; border-color: #111; }
-.apply-filters { display: block; width: 100%; padding: 12px; background: #28a745; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 8px; }
-.hint { font-size: 0.8rem; color: #666; margin-top: 12px; margin-bottom: 18px; }
+.filter-section { margin-bottom: 20px; }
+.filter-section label { display: inline-block; font-weight: bold; margin-bottom: 8px; }
+.filter-coords { font-size: 0.8rem; color: #444; margin-top: 6px; }
+
+/* More space between the map and the next section */
+#filter-map { margin-bottom: 18px; }
+ .filter-time button { margin-right: 8px; margin-bottom: 8px; padding: 8px 10px; border-radius: 6px; border: 1px solid #ddd; background: #fafafa; cursor: pointer; }
+ .filter-time button.selected { background: #222; color: #fff; border-color: #111; }
+ .apply-filters { display: block; width: 100%; padding: 12px; background: #1c570c; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 8px; }
+ .hint { font-size: 0.9rem; color: #666; margin-top: 6px; margin-bottom: 8px; }
+
+/* Make the distance input text match the hint/coords small text */
+#filter-distance {
+  font-family: Arial, sans-serif !important;
+  font-size: 0.9rem !important;
+  color: #555 !important;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
 
 
 .no-birds-message {

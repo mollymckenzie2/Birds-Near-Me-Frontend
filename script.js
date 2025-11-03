@@ -507,6 +507,8 @@ function resetFilters() {
       filterMarker = L.marker([lat, lng], { draggable: true }).addTo(filterMap);
     }
     updateFilterCoordsText(lat, lng);
+    // update main Location display when resetting filters
+    if (filterState.lat && filterState.lng) showLocationName(filterState.lat, filterState.lng);
   }
 
   // close panel and re-run default fetch
@@ -567,6 +569,8 @@ function initFilterMap() {
     filterState.lat = clickLat;
     filterState.lng = clickLng;
     updateFilterCoordsText(clickLat, clickLng);
+    // update the main Location display immediately when a new pin is selected
+    showLocationName(clickLat, clickLng);
   });
 
   if (filterMarker) {
@@ -574,6 +578,8 @@ function initFilterMap() {
       const p = filterMarker.getLatLng();
       filterState.lat = p.lat; filterState.lng = p.lng;
       updateFilterCoordsText(p.lat, p.lng);
+      // update the main Location display when marker is dragged
+      showLocationName(p.lat, p.lng);
     });
   }
 }
