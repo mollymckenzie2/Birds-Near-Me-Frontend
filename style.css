@@ -400,9 +400,20 @@ h1 + .location-display {
   font-size: 0.75rem;
   margin-bottom: 10px;
 }
-/* Use Press Start 2P for all filter panel text */
+
 .filter-panel, .filter-panel * {
   font-family: 'Press Start 2P', cursive, monospace;
+}
+
+
+.filter-panel .filter-time button,
+.filter-panel #filter-coords,
+.filter-panel .hint,
+.filter-panel #reset-filters,
+.filter-panel .leaflet-control-attribution {
+  font-family: Arial, sans-serif !important;
+  font-size: 0.9em !important;
+  color: #555 !important;
 }
 .close-filters {
   position: absolute;
