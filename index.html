@@ -15,6 +15,7 @@
 
     <div id="controls" class="controls">
       <button id="filters-btn" class="filters-btn hidden">Filters</button>
+      <button id="select-btn" class="filters-btn hidden">Select Birds</button>
     </div>
 
     <div id="birds" class="birds-grid"></div>
@@ -58,6 +59,33 @@
       <div class="filter-actions">
         <button id="reset-filters" class="reset-filters">Reset Filters</button>
         <button id="apply-filters" class="apply-filters">Apply Filters</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Select Birds side panel (hidden by default) -->
+  <div id="select-backdrop" class="filter-backdrop" aria-hidden="true"></div>
+  <aside id="select-panel" class="filter-panel" aria-hidden="true">
+    <div class="filter-panel-inner">
+      <button id="close-select" class="close-filters" aria-label="Close">×</button>
+      <h3>Select Bird</h3>
+
+      <div class="filter-section">
+        <label for="select-input">Bird Name</label>
+        <input id="select-input" list="species-datalist" placeholder="Type a bird name..." />
+        <datalist id="species-datalist"></datalist>
+        <div class="hint">Start typing to see suggestions from the API</div>
+      </div>
+
+      <div class="filter-section">
+        <label for="select-distance">Distance (miles)</label>
+        <input id="select-distance" type="number" min="1" max="100" value="10" />
+        <div class="hint">Max 100 Miles</div>
+      </div>
+
+      <div class="filter-actions">
+        <button id="reset-select" class="reset-filters">Reset</button>
+        <button id="search-bird" class="apply-filters">Search For This Bird</button>
       </div>
     </div>
   </aside>

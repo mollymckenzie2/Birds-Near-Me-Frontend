@@ -17,6 +17,42 @@ let filterMap = null;
 let filterMarker = null;
 let initialLoadComplete = false;
 
+// Select-Bird UI state
+let speciesCache = [];
+let speciesDebounce = null;
+let selectedSpecies = null;
+let localSpeciesLoaded = false;
+let localSpeciesList = []; // {comName, speciesCode}
+
+function loadLocalSpeciesCSV() {
+  if (localSpeciesLoaded) return Promise.resolve(localSpeciesList);
+  const path = 'GetSpeciesCodes/bird_species_codes.csv';
+  return fetch(path).then(r => {
+    if (!r.ok) throw new Error('local CSV not found');
+    return r.text();
+  }).then(txt => {
+    const lines = txt.split(/\r?\n/);
+    localSpeciesList = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      // simple CSV split on first comma
+      const idx = line.indexOf(',');
+      if (idx === -1) continue;
+      const name = line.slice(0, idx).trim();
+      const code = line.slice(idx + 1).trim();
+      if (name) localSpeciesList.push({ comName: name, speciesCode: code });
+    }
+    localSpeciesLoaded = true;
+    return localSpeciesList;
+  }).catch(err => {
+    console.warn('failed to load local species CSV', err);
+    localSpeciesLoaded = true; // avoid retrying repeatedly
+    localSpeciesList = [];
+    return localSpeciesList;
+  });
+}
+
 let searchStatusEl = null;
 function ensureSearchStatusEl() {
   if (searchStatusEl) return searchStatusEl;
@@ -163,7 +199,7 @@ function obsWithinDays(obsDt, days) {
   return diffDays <= days;
 }
 
-function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxResults = 30, recentDays = 3) {
+function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxResults = 30, recentDays = 3, species = null) {
   let attempt = 0;
 
   
@@ -187,7 +223,11 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
 
   const distMiles = radiiMiles[attempt];
     const distKm = Math.round(distMiles * 1.60934 * 100) / 100;
-    const url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=${distKm}&maxResults=${maxResults}`;
+    let url = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=${distKm}&maxResults=${maxResults}`;
+    if (species) {
+      // prefer passing a species param to the backend if supported
+      url += `&species=${encodeURIComponent(species)}`;
+    }
   console.log(`trying radius attempt #${attempt + 1}: ${distMiles} mi (${distKm} km)`);
   
   if (attempt === 0) {
@@ -210,7 +250,19 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
           return;
         }
 
-        const recent = data.filter(b => obsWithinDays(b.obsDt, recentDays));
+        // If a species filter was provided but the backend doesn't support it,
+        // also apply a client-side filter as a fallback. Match common name or species code (case-insensitive).
+        let filteredData = data;
+        if (species) {
+          const s = String(species).toLowerCase();
+          filteredData = data.filter(b => {
+            const com = (b.comName || '').toLowerCase();
+            const code = String(b.speciesCode || b.species || '').toLowerCase();
+            return com === s || code === s || com.includes(s);
+          });
+        }
+
+        const recent = filteredData.filter(b => obsWithinDays(b.obsDt, recentDays));
         console.log('recent filtered count:', recent.length);
         if (recent.length > 0) {
           hideSearchStatus();
@@ -356,16 +408,163 @@ function updateFilterApplyVisibility() {
   const applyBtn = document.getElementById('apply-filters');
   const resetBtn = document.getElementById('reset-filters');
   const filtersBtn = document.getElementById('filters-btn');
+  const selectBtn = document.getElementById('select-btn');
   if (!applyBtn || !resetBtn) return;
   if (initialLoadComplete) {
     applyBtn.classList.remove('hidden');
     resetBtn.classList.remove('hidden');
     filtersBtn && filtersBtn.classList.remove('hidden');
+    selectBtn && selectBtn.classList.remove('hidden');
   } else {
     applyBtn.classList.add('hidden');
     resetBtn.classList.add('hidden');
     filtersBtn && filtersBtn.classList.add('hidden');
+    selectBtn && selectBtn.classList.add('hidden');
   }
+}
+
+// ------------------ Select-Bird UI logic ------------------
+function initSelectUI() {
+  const btn = document.getElementById('select-btn');
+  const panel = document.getElementById('select-panel');
+  const backdrop = document.getElementById('select-backdrop');
+  const closeBtn = document.getElementById('close-select');
+  const searchBtn = document.getElementById('search-bird');
+  const resetBtn = document.getElementById('reset-select');
+  const input = document.getElementById('select-input');
+
+  if (!btn || !panel) return;
+
+  btn.classList.add('hidden');
+  btn.addEventListener('click', openSelectPanel);
+  backdrop && backdrop.addEventListener('click', closeSelectPanel);
+  closeBtn && closeBtn.addEventListener('click', closeSelectPanel);
+  searchBtn && searchBtn.addEventListener('click', applySelectSearch);
+  resetBtn && resetBtn.addEventListener('click', resetSelect);
+
+  // suggestions
+  if (input) {
+    input.addEventListener('input', (ev) => {
+      const q = ev.target.value || '';
+      selectedSpecies = q;
+      if (speciesDebounce) clearTimeout(speciesDebounce);
+      speciesDebounce = setTimeout(() => fetchSpeciesSuggestions(q), 250);
+    });
+  }
+}
+
+function openSelectPanel() {
+  const panel = document.getElementById('select-panel');
+  const backdrop = document.getElementById('select-backdrop');
+  if (!panel) return;
+  panel.classList.add('open');
+  backdrop && backdrop.classList.add('open');
+  panel.setAttribute('aria-hidden', 'false');
+  backdrop && backdrop.setAttribute('aria-hidden', 'false');
+}
+
+function closeSelectPanel() {
+  const panel = document.getElementById('select-panel');
+  const backdrop = document.getElementById('select-backdrop');
+  if (!panel) return;
+  panel.classList.remove('open');
+  backdrop && backdrop.classList.remove('open');
+  panel.setAttribute('aria-hidden', 'true');
+  backdrop && backdrop.setAttribute('aria-hidden', 'true');
+}
+
+function resetSelect() {
+  const input = document.getElementById('select-input');
+  const dist = document.getElementById('select-distance');
+  if (input) input.value = '';
+  if (dist) dist.value = 10;
+  selectedSpecies = null;
+}
+
+function fetchSpeciesSuggestions(q) {
+  const datalist = document.getElementById('species-datalist');
+  if (!datalist) return;
+  // do not query empty strings aggressively
+  if (!q || q.trim().length < 1) {
+    datalist.innerHTML = '';
+    return;
+  }
+
+  // prefer local CSV list if available
+  loadLocalSpeciesCSV().then(list => {
+    if (list && list.length > 0) {
+      const ql = q.toLowerCase();
+      const matches = list.filter(s => (s.comName && s.comName.toLowerCase().includes(ql)) || (s.speciesCode && s.speciesCode.toLowerCase().includes(ql)));
+      // limit to top 50 suggestions
+      const out = matches.slice(0, 50).map(s => `${s.comName} (${s.speciesCode})`);
+      datalist.innerHTML = out.map(v => `<option value="${v}"></option>`).join('');
+      return;
+    }
+
+    // if local CSV not available, try backend species endpoint
+    const url = `${backendURL}/api/species?query=${encodeURIComponent(q)}`;
+    fetch(url)
+      .then(r => {
+        if (!r.ok) throw new Error('no species endpoint');
+        return r.json();
+      })
+      .then(list2 => {
+        speciesCache = Array.isArray(list2) ? list2 : [];
+        datalist.innerHTML = speciesCache.map(s => {
+          const v = (typeof s === 'string') ? s : (s.comName || s.name || s.species || '');
+          return `<option value="${v}"></option>`;
+        }).join('');
+      })
+      .catch(() => {
+        // fallback: fetch birds around user's location with big radius and build unique names
+        const lat = userLat || 39.5;
+        const lng = userLng || -98.35;
+        const fallbackUrl = `${backendURL}/api/birds?lat=${lat}&lng=${lng}&dist=500&maxResults=500`;
+        fetch(fallbackUrl).then(r => r.ok ? r.json() : []).then(data => {
+          const names = [];
+          (Array.isArray(data) ? data : []).forEach(b => {
+            if (b && b.comName) names.push(b.comName);
+          });
+          const uniq = Array.from(new Set(names)).filter(n => n.toLowerCase().includes(q.toLowerCase()));
+          datalist.innerHTML = uniq.map(v => `<option value="${v}"></option>`).join('');
+        }).catch(() => { datalist.innerHTML = ''; });
+      });
+  });
+}
+
+function applySelectSearch() {
+  const input = document.getElementById('select-input');
+  const distEl = document.getElementById('select-distance');
+  let species = input && input.value ? input.value.trim() : null;
+  let dist = distEl ? Number(distEl.value) || 10 : 10;
+  if (dist > 100) dist = 100;
+  if (!species) {
+    alert('Please type and select a bird name to search for.');
+    return;
+  }
+  // close UI and run search
+  closeSelectPanel();
+  filtersApplied = true;
+  showSearchStatus(`Searching for ${species}`);
+  const lat = filterState.lat || userLat;
+  const lng = filterState.lng || userLng;
+  if (!lat || !lng) {
+    alert('No location available to search from.');
+    hideSearchStatus();
+    return;
+  }
+  // call fetch with a single radius equal to the distance and pass species
+  // try to extract a species code if the input contains one like "Name (code)"
+  let speciesParam = species;
+  const m = species.match(/\(([^)]+)\)\s*$/);
+  if (m && m[1]) {
+    speciesParam = m[1];
+  } else if (localSpeciesLoaded && localSpeciesList.length > 0) {
+    const found = localSpeciesList.find(s => s.comName.toLowerCase() === species.toLowerCase());
+    if (found && found.speciesCode) speciesParam = found.speciesCode;
+  }
+
+  fetchWithRadiusRetries(lat, lng, [dist], 100, filterState.days || 3, speciesParam);
 }
 
 
@@ -428,16 +627,19 @@ function init() {
       showLocationName(latitude, longitude);
       fetchBirds(latitude, longitude);
       
-      initFiltersUI();
+          initFiltersUI();
+          initSelectUI();
     }, err => {
       console.error('geolocation error', err);
       birdsDiv.innerHTML = '<p>Unable to get your location.</p>';
       // still try to wire filters UI (map will use default coords)
       initFiltersUI();
+      initSelectUI();
     });
   } else {
     birdsDiv.innerHTML = '<p>Geolocation is not supported by your browser.</p>';
     initFiltersUI();
+    initSelectUI();
   }
 }
 
