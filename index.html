@@ -72,9 +72,12 @@
 
       <div class="filter-section">
         <label for="select-input">Bird Name</label>
-        <input id="select-input" list="species-datalist" placeholder="Type a bird name..." />
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="select-input" list="species-datalist" placeholder="Type a bird name..." />
+          <button id="add-species" class="reset-filters" type="button">Add</button>
+        </div>
         <datalist id="species-datalist"></datalist>
-        <div class="hint">Start typing to see suggestions from the API</div>
+        <div id="selected-species" class="selected-species" aria-live="polite"></div>
       </div>
 
       <div class="filter-section">

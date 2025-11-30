@@ -21,6 +21,7 @@ let initialLoadComplete = false;
 let speciesCache = [];
 let speciesDebounce = null;
 let selectedSpecies = null;
+let selectedSpeciesList = []; // array of strings the user added
 let localSpeciesLoaded = false;
 let localSpeciesList = []; // {comName, speciesCode}
 
@@ -441,6 +442,8 @@ function initSelectUI() {
   closeBtn && closeBtn.addEventListener('click', closeSelectPanel);
   searchBtn && searchBtn.addEventListener('click', applySelectSearch);
   resetBtn && resetBtn.addEventListener('click', resetSelect);
+  const addBtn = document.getElementById('add-species');
+  const selectedContainer = document.getElementById('selected-species');
 
   // suggestions
   if (input) {
@@ -450,6 +453,45 @@ function initSelectUI() {
       if (speciesDebounce) clearTimeout(speciesDebounce);
       speciesDebounce = setTimeout(() => fetchSpeciesSuggestions(q), 250);
     });
+    // allow Enter to add the current input to selection
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        addSpeciesFromInput();
+      }
+    });
+  }
+
+  if (addBtn) addBtn.addEventListener('click', addSpeciesFromInput);
+
+  function renderSelectedSpecies() {
+    if (!selectedContainer) return;
+    selectedContainer.innerHTML = '';
+    selectedSpeciesList.forEach((s, idx) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'reset-filters';
+      chip.style.display = 'inline-block';
+      chip.style.marginRight = '8px';
+      chip.style.marginBottom = '8px';
+      chip.textContent = s;
+      chip.title = 'Remove';
+      chip.addEventListener('click', () => {
+        selectedSpeciesList.splice(idx, 1);
+        renderSelectedSpecies();
+      });
+      selectedContainer.appendChild(chip);
+    });
+  }
+
+  function addSpeciesFromInput() {
+    const inputEl = document.getElementById('select-input');
+    if (!inputEl) return;
+    const v = inputEl.value && inputEl.value.trim();
+    if (!v) return;
+    if (!selectedSpeciesList.includes(v)) selectedSpeciesList.push(v);
+    inputEl.value = '';
+    renderSelectedSpecies();
   }
 }
 
@@ -479,6 +521,9 @@ function resetSelect() {
   if (input) input.value = '';
   if (dist) dist.value = 10;
   selectedSpecies = null;
+  selectedSpeciesList = [];
+  const selectedContainer = document.getElementById('selected-species');
+  if (selectedContainer) selectedContainer.innerHTML = '';
 }
 
 function fetchSpeciesSuggestions(q) {
@@ -535,17 +580,23 @@ function fetchSpeciesSuggestions(q) {
 function applySelectSearch() {
   const input = document.getElementById('select-input');
   const distEl = document.getElementById('select-distance');
-  let species = input && input.value ? input.value.trim() : null;
+  // ensure any typed value gets added if user didn't click Add
+  if (input && input.value && input.value.trim()) {
+    const v = input.value.trim();
+    if (!selectedSpeciesList.includes(v)) selectedSpeciesList.push(v);
+  }
+
+  const speciesList = selectedSpeciesList.slice();
   let dist = distEl ? Number(distEl.value) || 10 : 10;
   if (dist > 100) dist = 100;
-  if (!species) {
-    alert('Please type and select a bird name to search for.');
+  if (!speciesList || speciesList.length === 0) {
+    alert('Please add at least one bird to search for.');
     return;
   }
   // close UI and run search
   closeSelectPanel();
   filtersApplied = true;
-  showSearchStatus(`Searching for ${species}`);
+  showSearchStatus(`Searching for ${speciesList.join(', ')}`);
   const lat = filterState.lat || userLat;
   const lng = filterState.lng || userLng;
   if (!lat || !lng) {
@@ -553,18 +604,43 @@ function applySelectSearch() {
     hideSearchStatus();
     return;
   }
-  // call fetch with a single radius equal to the distance and pass species
-  // try to extract a species code if the input contains one like "Name (code)"
-  let speciesParam = species;
-  const m = species.match(/\(([^)]+)\)\s*$/);
-  if (m && m[1]) {
-    speciesParam = m[1];
-  } else if (localSpeciesLoaded && localSpeciesList.length > 0) {
-    const found = localSpeciesList.find(s => s.comName.toLowerCase() === species.toLowerCase());
-    if (found && found.speciesCode) speciesParam = found.speciesCode;
-  }
+  // For multi-species search, fetch a large result set from backend within the distance
+  // and then filter client-side to include all sightings that match any selected species
+  const maxResults = 500;
+  fetchBirdsWithinDistance(lat, lng, dist, maxResults)
+    .then(data => {
+      // build normalized species matchers
+      const norms = speciesList.map(s => s.toLowerCase());
+      const matched = (Array.isArray(data) ? data : []).filter(b => {
+        const com = (b.comName || '').toLowerCase();
+        const code = String(b.speciesCode || b.species || '').toLowerCase();
+        // also support "Name (code)" entries by stripping parentheses
+        return norms.some(n => com === n || code === n || com.includes(n) || code.includes(n));
+      }).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
 
-  fetchWithRadiusRetries(lat, lng, [dist], 100, filterState.days || 3, speciesParam);
+      hideSearchStatus();
+      if (!matched || matched.length === 0) {
+        birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
+      } else {
+        displayBirds(matched, lat, lng);
+      }
+    })
+    .catch(err => {
+      console.error('species search error', err);
+      hideSearchStatus();
+      birdsDiv.innerHTML = '<p>Error fetching bird data.</p>';
+    });
+}
+
+function fetchBirdsWithinDistance(lat, lng, distMiles = 10, maxResults = 200) {
+  return new Promise((resolve, reject) => {
+    const distKm = Math.round(distMiles * 1.60934 * 100) / 100;
+    const url = `${backendURL}/api/birds?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&dist=${distKm}&maxResults=${maxResults}`;
+    fetch(url)
+      .then(r => { if (!r.ok) throw new Error('Network response not ok'); return r.json(); })
+      .then(data => resolve(Array.isArray(data) ? data : []))
+      .catch(reject);
+  });
 }
 
 
