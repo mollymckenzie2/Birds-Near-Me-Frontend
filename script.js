@@ -277,6 +277,7 @@ function fetchWithRadiusRetries(lat, lng, radiiMiles = SEARCH_RADII_MILES, maxRe
         const recent = filteredData.filter(b => obsWithinDays(b.obsDt, recentDays));
         console.log('recent filtered count:', recent.length);
         if (recent.length > 0) {
+          showFetchDiagnostics(Array.isArray(data) ? data.length : 0, recent.length);
           hideSearchStatus();
           displayBirds(recent, lat, lng);
         } else {
@@ -638,10 +639,12 @@ function applySelectSearch() {
       // prefer code-based queries
       fetchBirdsBySpeciesCodes(lat, lng, dist, codes, 300)
         .then(list => {
-          const matched = (Array.isArray(list) ? list : []).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
+          const all = Array.isArray(list) ? list : [];
+          const matched = all.filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
+          showFetchDiagnostics(all.length, matched.length);
           hideSearchStatus();
           if (!matched || matched.length === 0) {
-            console.log('Code-based species search returned 0 after date filter. Fetched', list.length, 'items. Codes:', codes);
+            console.log('Code-based species search returned 0 after date filter. Fetched', all.length, 'items. Codes:', codes);
             birdsDiv.innerHTML = '<p class="no-birds-message">No matching sightings found for selected birds.</p>';
           } else {
             displayBirds(matched, lat, lng);
@@ -656,7 +659,8 @@ function applySelectSearch() {
       // fallback: broad fetch then name/code match
       fetchBirdsWithinDistance(lat, lng, dist, maxResults)
         .then(list => {
-          const matched = (Array.isArray(list) ? list : []).filter(b => {
+          const all = Array.isArray(list) ? list : [];
+          const matched = all.filter(b => {
             const comNorm = normalizeForMatch(b.comName || '');
             const codeNorm = normalizeForMatch(String(b.speciesCode || b.species || ''));
             return matchers.some(m => {
@@ -669,12 +673,12 @@ function applySelectSearch() {
               return false;
             });
           }).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
-
+          showFetchDiagnostics(all.length, matched.length);
           hideSearchStatus();
           if (!matched || matched.length === 0) {
-            console.log('Name-based fallback search found 0 matches. Fetched', list.length, 'items. Matchers:', matchers);
-            if (list.length > 0) {
-              const uniq = Array.from(new Set(list.map(x => x.comName).filter(Boolean))).slice(0, 20);
+            console.log('Name-based fallback search found 0 matches. Fetched', all.length, 'items. Matchers:', matchers);
+            if (all.length > 0) {
+              const uniq = Array.from(new Set(all.map(x => x.comName).filter(Boolean))).slice(0, 20);
               birdsDiv.innerHTML = `<p class="no-birds-message">No matching sightings found for selected birds.</p><div style="text-align:center;margin-top:12px;font-size:0.9rem;color:#444">Sample nearby species: ${uniq.join(', ')}</div>`;
             } else {
               birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
@@ -697,32 +701,46 @@ function applySelectSearch() {
 function fetchBirdsBySpeciesCodes(lat, lng, distMiles, codes = [], maxResultsPerCode = 200) {
   if (!codes || codes.length === 0) return Promise.resolve([]);
   const distKm = Math.round(distMiles * 1.60934 * 100) / 100;
-  // If backend supports comma-separated species param, we could try that first
-  const tryComma = `${backendURL}/api/birds?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&dist=${distKm}&maxResults=${maxResultsPerCode}&species=${encodeURIComponent(codes.join(','))}`;
-  return fetch(tryComma)
-    .then(r => {
-      if (!r.ok) throw new Error('comma-query not supported');
-      return r.json();
-    })
-    .then(data => Array.isArray(data) ? data : [])
-    .catch(() => {
-      // fallback: query each code individually and concat results
-      const promises = codes.map(code => {
-        const url = `${backendURL}/api/birds?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&dist=${distKm}&maxResults=${maxResultsPerCode}&species=${encodeURIComponent(code)}`;
-        return fetch(url).then(r => r.ok ? r.json() : []).catch(() => []);
-      });
-      return Promise.all(promises).then(results => {
-        // flatten and dedupe by obsId or by combined key
-        const flat = [].concat(...results.map(r => Array.isArray(r) ? r : []));
-        const seen = new Set();
-        const dedup = [];
-        flat.forEach(item => {
-          const k = item.obsId || `${item.speciesCode || item.species}-${item.obsDt}-${item.lat}-${item.lng}`;
-          if (!seen.has(k)) { seen.add(k); dedup.push(item); }
-        });
-        return dedup;
-      });
+  // Prefer per-code parallel requests (more reliable across backends).
+  const promises = codes.map(code => {
+    const url = `${backendURL}/api/birds?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&dist=${distKm}&maxResults=${maxResultsPerCode}&species=${encodeURIComponent(code)}`;
+    return fetch(url).then(r => r.ok ? r.json() : []).catch(() => []);
+  });
+  return Promise.all(promises).then(results => {
+    const flat = [].concat(...results.map(r => Array.isArray(r) ? r : []));
+    // if we got nothing, try a comma-separated query as a last resort
+    if (!flat || flat.length === 0) {
+      const tryComma = `${backendURL}/api/birds?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&dist=${distKm}&maxResults=${maxResultsPerCode}&species=${encodeURIComponent(codes.join(','))}`;
+      return fetch(tryComma)
+        .then(r => r.ok ? r.json() : [])
+        .then(data => Array.isArray(data) ? data : [])
+        .catch(() => []);
+    }
+    const seen = new Set();
+    const dedup = [];
+    flat.forEach(item => {
+      const k = item.obsId || `${item.speciesCode || item.species}-${item.obsDt}-${item.lat}-${item.lng}`;
+      if (!seen.has(k)) { seen.add(k); dedup.push(item); }
     });
+    return dedup;
+  });
+}
+
+// small UI helper to show fetched vs displayed counts for debugging
+function showFetchDiagnostics(fetchedCount, displayedCount) {
+  let diag = document.getElementById('fetch-diagnostics');
+  if (!diag) {
+    diag = document.createElement('div');
+    diag.id = 'fetch-diagnostics';
+    diag.style.textAlign = 'center';
+    diag.style.fontSize = '0.9rem';
+    diag.style.color = '#444';
+    diag.style.margin = '8px 0';
+    const container = document.querySelector('.container') || document.body;
+    container.insertBefore(diag, container.querySelector('#birds'));
+  }
+  diag.textContent = `Fetched ${fetchedCount} sightings — showing ${displayedCount}`;
+  setTimeout(() => { if (diag) diag.remove(); }, 6000);
 }
 
 function fetchBirdsWithinDistance(lat, lng, distMiles = 10, maxResults = 200) {
