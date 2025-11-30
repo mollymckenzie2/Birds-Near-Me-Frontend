@@ -618,56 +618,110 @@ function applySelectSearch() {
   // For multi-species search, fetch a large result set from backend within the distance
   // and then filter client-side to include all sightings that match any selected species
   const maxResults = 500;
-  fetchBirdsWithinDistance(lat, lng, dist, maxResults)
-    .then(data => {
-      const list = Array.isArray(data) ? data : [];
-      // prepare matchers: try to derive species codes where possible
-      const matchers = speciesList.map(s => {
-        const raw = String(s).trim();
-        let code = null;
-        const m = raw.match(/\(([^)]+)\)\s*$/);
-        if (m && m[1]) code = m[1].trim().toLowerCase();
-        // try local CSV mapping for exact common name match
-        if (!code && localSpeciesLoaded && localSpeciesList.length > 0) {
-          const found = localSpeciesList.find(x => x.comName && x.comName.toLowerCase() === raw.toLowerCase());
-          if (found && found.speciesCode) code = String(found.speciesCode).toLowerCase();
-        }
-        return { raw, norm: normalizeForMatch(raw), code };
-      });
-
-      // normalized matching for backend items
-      const matched = list.filter(b => {
-        const comNorm = normalizeForMatch(b.comName || '');
-        const codeNorm = normalizeForMatch(String(b.speciesCode || b.species || ''));
-        return matchers.some(m => {
-          if (m.code) {
-            if (codeNorm === normalizeForMatch(m.code) || codeNorm.includes(normalizeForMatch(m.code))) return true;
-          }
-          if (comNorm === m.norm) return true;
-          if (comNorm.includes(m.norm) || m.norm.includes(comNorm)) return true;
-          if (codeNorm.includes(m.norm) || m.norm.includes(codeNorm)) return true;
-          return false;
-        });
-      }).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
-
-      hideSearchStatus();
-      if (!matched || matched.length === 0) {
-        console.log('Species search found 0 matches after filtering. Fetched', list.length, 'items. Matchers:', matchers);
-        // if we fetched results but none matched, help the user by showing available species names
-        if (list.length > 0) {
-          const uniq = Array.from(new Set(list.map(x => x.comName).filter(Boolean))).slice(0, 20);
-          birdsDiv.innerHTML = `<p class="no-birds-message">No matching sightings found for selected birds.</p><div style="text-align:center;margin-top:12px;font-size:0.9rem;color:#444">Sample nearby species: ${uniq.join(', ')}</div>`;
-        } else {
-          birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
-        }
-      } else {
-        displayBirds(matched, lat, lng);
+  // Try to map added species to species codes (from parentheses or local CSV). If we have codes
+  // prefer to query backend by code(s) (more reliable). Otherwise fall back to full-area fetch + name-matching.
+  loadLocalSpeciesCSV().then(() => {
+    const matchers = speciesList.map(s => {
+      const raw = String(s).trim();
+      let code = null;
+      const m = raw.match(/\(([^)]+)\)\s*$/);
+      if (m && m[1]) code = m[1].trim().toLowerCase();
+      if (!code && localSpeciesLoaded && localSpeciesList.length > 0) {
+        const found = localSpeciesList.find(x => x.comName && x.comName.toLowerCase() === raw.toLowerCase());
+        if (found && found.speciesCode) code = String(found.speciesCode).toLowerCase();
       }
+      return { raw, norm: normalizeForMatch(raw), code };
+    });
+
+    const codes = matchers.map(m => m.code).filter(Boolean);
+    if (codes.length > 0) {
+      // prefer code-based queries
+      fetchBirdsBySpeciesCodes(lat, lng, dist, codes, 300)
+        .then(list => {
+          const matched = (Array.isArray(list) ? list : []).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
+          hideSearchStatus();
+          if (!matched || matched.length === 0) {
+            console.log('Code-based species search returned 0 after date filter. Fetched', list.length, 'items. Codes:', codes);
+            birdsDiv.innerHTML = '<p class="no-birds-message">No matching sightings found for selected birds.</p>';
+          } else {
+            displayBirds(matched, lat, lng);
+          }
+        })
+        .catch(err => {
+          console.error('code-based species search error', err);
+          hideSearchStatus();
+          birdsDiv.innerHTML = '<p>Error fetching bird data.</p>';
+        });
+    } else {
+      // fallback: broad fetch then name/code match
+      fetchBirdsWithinDistance(lat, lng, dist, maxResults)
+        .then(list => {
+          const matched = (Array.isArray(list) ? list : []).filter(b => {
+            const comNorm = normalizeForMatch(b.comName || '');
+            const codeNorm = normalizeForMatch(String(b.speciesCode || b.species || ''));
+            return matchers.some(m => {
+              if (m.code) {
+                if (codeNorm === normalizeForMatch(m.code) || codeNorm.includes(normalizeForMatch(m.code))) return true;
+              }
+              if (comNorm === m.norm) return true;
+              if (comNorm.includes(m.norm) || m.norm.includes(comNorm)) return true;
+              if (codeNorm.includes(m.norm) || m.norm.includes(codeNorm)) return true;
+              return false;
+            });
+          }).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
+
+          hideSearchStatus();
+          if (!matched || matched.length === 0) {
+            console.log('Name-based fallback search found 0 matches. Fetched', list.length, 'items. Matchers:', matchers);
+            if (list.length > 0) {
+              const uniq = Array.from(new Set(list.map(x => x.comName).filter(Boolean))).slice(0, 20);
+              birdsDiv.innerHTML = `<p class="no-birds-message">No matching sightings found for selected birds.</p><div style="text-align:center;margin-top:12px;font-size:0.9rem;color:#444">Sample nearby species: ${uniq.join(', ')}</div>`;
+            } else {
+              birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
+            }
+          } else {
+            displayBirds(matched, lat, lng);
+          }
+        })
+        .catch(err => {
+          console.error('species search error', err);
+          hideSearchStatus();
+          birdsDiv.innerHTML = '<p>Error fetching bird data.</p>';
+        });
+    }
+  });
+}
+
+// Try fetching by species codes (preferred). If backend doesn't support multiple codes
+// in one request, perform parallel requests per code and aggregate.
+function fetchBirdsBySpeciesCodes(lat, lng, distMiles, codes = [], maxResultsPerCode = 200) {
+  if (!codes || codes.length === 0) return Promise.resolve([]);
+  const distKm = Math.round(distMiles * 1.60934 * 100) / 100;
+  // If backend supports comma-separated species param, we could try that first
+  const tryComma = `${backendURL}/api/birds?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&dist=${distKm}&maxResults=${maxResultsPerCode}&species=${encodeURIComponent(codes.join(','))}`;
+  return fetch(tryComma)
+    .then(r => {
+      if (!r.ok) throw new Error('comma-query not supported');
+      return r.json();
     })
-    .catch(err => {
-      console.error('species search error', err);
-      hideSearchStatus();
-      birdsDiv.innerHTML = '<p>Error fetching bird data.</p>';
+    .then(data => Array.isArray(data) ? data : [])
+    .catch(() => {
+      // fallback: query each code individually and concat results
+      const promises = codes.map(code => {
+        const url = `${backendURL}/api/birds?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&dist=${distKm}&maxResults=${maxResultsPerCode}&species=${encodeURIComponent(code)}`;
+        return fetch(url).then(r => r.ok ? r.json() : []).catch(() => []);
+      });
+      return Promise.all(promises).then(results => {
+        // flatten and dedupe by obsId or by combined key
+        const flat = [].concat(...results.map(r => Array.isArray(r) ? r : []));
+        const seen = new Set();
+        const dedup = [];
+        flat.forEach(item => {
+          const k = item.obsId || `${item.speciesCode || item.species}-${item.obsDt}-${item.lat}-${item.lng}`;
+          if (!seen.has(k)) { seen.add(k); dedup.push(item); }
+        });
+        return dedup;
+      });
     });
 }
 
