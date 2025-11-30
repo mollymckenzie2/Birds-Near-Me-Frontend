@@ -25,6 +25,17 @@ let selectedSpeciesList = []; // array of strings the user added
 let localSpeciesLoaded = false;
 let localSpeciesList = []; // {comName, speciesCode}
 
+// helper: normalize strings for comparison
+function normalizeForMatch(s) {
+  if (!s) return '';
+  // remove parentheses content, non-word chars, collapse spaces
+  let out = String(s).replace(/\(.*?\)/g, '');
+  out = out.replace(/[^\w\s-]/g, ' ');
+  out = out.replace(/[_\-]+/g, ' ');
+  out = out.replace(/\s+/g, ' ').trim().toLowerCase();
+  return out;
+}
+
 function loadLocalSpeciesCSV() {
   if (localSpeciesLoaded) return Promise.resolve(localSpeciesList);
   const path = 'GetSpeciesCodes/bird_species_codes.csv';
@@ -609,18 +620,46 @@ function applySelectSearch() {
   const maxResults = 500;
   fetchBirdsWithinDistance(lat, lng, dist, maxResults)
     .then(data => {
-      // build normalized species matchers
-      const norms = speciesList.map(s => s.toLowerCase());
-      const matched = (Array.isArray(data) ? data : []).filter(b => {
-        const com = (b.comName || '').toLowerCase();
-        const code = String(b.speciesCode || b.species || '').toLowerCase();
-        // also support "Name (code)" entries by stripping parentheses
-        return norms.some(n => com === n || code === n || com.includes(n) || code.includes(n));
+      const list = Array.isArray(data) ? data : [];
+      // prepare matchers: try to derive species codes where possible
+      const matchers = speciesList.map(s => {
+        const raw = String(s).trim();
+        let code = null;
+        const m = raw.match(/\(([^)]+)\)\s*$/);
+        if (m && m[1]) code = m[1].trim().toLowerCase();
+        // try local CSV mapping for exact common name match
+        if (!code && localSpeciesLoaded && localSpeciesList.length > 0) {
+          const found = localSpeciesList.find(x => x.comName && x.comName.toLowerCase() === raw.toLowerCase());
+          if (found && found.speciesCode) code = String(found.speciesCode).toLowerCase();
+        }
+        return { raw, norm: normalizeForMatch(raw), code };
+      });
+
+      // normalized matching for backend items
+      const matched = list.filter(b => {
+        const comNorm = normalizeForMatch(b.comName || '');
+        const codeNorm = normalizeForMatch(String(b.speciesCode || b.species || ''));
+        return matchers.some(m => {
+          if (m.code) {
+            if (codeNorm === normalizeForMatch(m.code) || codeNorm.includes(normalizeForMatch(m.code))) return true;
+          }
+          if (comNorm === m.norm) return true;
+          if (comNorm.includes(m.norm) || m.norm.includes(comNorm)) return true;
+          if (codeNorm.includes(m.norm) || m.norm.includes(codeNorm)) return true;
+          return false;
+        });
       }).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
 
       hideSearchStatus();
       if (!matched || matched.length === 0) {
-        birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
+        console.log('Species search found 0 matches after filtering. Fetched', list.length, 'items. Matchers:', matchers);
+        // if we fetched results but none matched, help the user by showing available species names
+        if (list.length > 0) {
+          const uniq = Array.from(new Set(list.map(x => x.comName).filter(Boolean))).slice(0, 20);
+          birdsDiv.innerHTML = `<p class="no-birds-message">No matching sightings found for selected birds.</p><div style="text-align:center;margin-top:12px;font-size:0.9rem;color:#444">Sample nearby species: ${uniq.join(', ')}</div>`;
+        } else {
+          birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
+        }
       } else {
         displayBirds(matched, lat, lng);
       }
