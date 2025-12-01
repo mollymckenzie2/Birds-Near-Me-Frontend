@@ -639,23 +639,20 @@ function applySelectSearch() {
 
     const codes = filteredMatchers.map(m => m.code).filter(Boolean);
     if (codes.length > 0) {
-      // prefer code-based queries
+      // prefer code-based queries, but aggregate using stepped radii when single large-radius queries fail
       fetchBirdsBySpeciesCodes(lat, lng, dist, codes, 300)
         .then(list => {
           const all = Array.isArray(list) ? list : [];
-          // if the backend returned nothing for the code-query, fall back to broad fetch+name matching
           if (!all || all.length === 0) {
-            console.log('Code-based query returned 0 items — falling back to name-based fetch');
-            fetchBirdsWithinDistance(lat, lng, dist, maxResults)
-              .then(list2 => {
-                const all2 = Array.isArray(list2) ? list2 : [];
-                    const matchers2 = filteredMatchers; // reuse computed matchers
-                      const matched2 = all2.filter(b => speciesMatches(b, matchers2)).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
-
+            // backend returned nothing for code query — try stepped aggregation (smaller radii)
+            console.log('Code-based query returned 0 items — trying stepped aggregation');
+            fetchBirdsBySteps(lat, lng, dist, 600)
+              .then(all2 => {
+                const matched2 = all2.filter(b => speciesMatches(b, filteredMatchers)).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
                 showFetchDiagnostics(all2.length, matched2.length);
                 hideSearchStatus();
                 if (!matched2 || matched2.length === 0) {
-                  console.log('Fallback name-based fetch returned 0 matches. Fetched', all2.length);
+                  console.log('Stepped aggregation returned 0 matches. Fetched', all2.length);
                   if (all2.length > 0) {
                     const uniq = Array.from(new Set(all2.map(x => x.comName).filter(Boolean))).slice(0, 20);
                     birdsDiv.innerHTML = `<p class="no-birds-message">No matching sightings found for selected birds.</p><div style="text-align:center;margin-top:12px;font-size:0.9rem;color:#444">Sample nearby species: ${uniq.join(', ')}</div>`;
@@ -667,14 +664,14 @@ function applySelectSearch() {
                 }
               })
               .catch(err => {
-                console.error('fallback fetch error', err);
+                console.error('stepped aggregation error', err);
                 hideSearchStatus();
                 birdsDiv.innerHTML = '<p>Error fetching bird data.</p>';
               });
             return;
           }
 
-          // ensure we still filter by species client-side (backend may ignore species param)
+          // ensure we still filter by species client-side
           const matchedBySpecies = all.filter(b => speciesMatches(b, filteredMatchers));
           const matched = matchedBySpecies.filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
           showFetchDiagnostics(all.length, matched.length);
@@ -740,6 +737,28 @@ function fetchBirdsBySpeciesCodes(lat, lng, distMiles, codes = [], maxResultsPer
         .then(data => Array.isArray(data) ? data : [])
         .catch(() => []);
     }
+    const seen = new Set();
+    const dedup = [];
+    flat.forEach(item => {
+      const k = item.obsId || `${item.speciesCode || item.species}-${item.obsDt}-${item.lat}-${item.lng}`;
+      if (!seen.has(k)) { seen.add(k); dedup.push(item); }
+    });
+    return dedup;
+  });
+}
+
+// Fetch sightings by stepping through smaller radii up to distMiles, aggregate and dedupe.
+function fetchBirdsBySteps(lat, lng, distMiles, maxResultsPerCall = 500) {
+  // make a series of smaller-radius calls to avoid backend failures on large radii
+  const baseSteps = [10, 25, 50, 100];
+  const steps = baseSteps.filter(s => s <= distMiles);
+  // ensure we include the requested max distance as the final step if it's larger than our base steps
+  if (distMiles > Math.max(...baseSteps)) steps.push(distMiles);
+
+  const promises = steps.map(r => fetchBirdsWithinDistance(lat, lng, r, maxResultsPerCall).catch(() => []));
+  return Promise.all(promises).then(results => {
+    const flat = [].concat(...results.map(r => Array.isArray(r) ? r : []));
+    // dedupe by obsId or by species-date-location key
     const seen = new Set();
     const dedup = [];
     flat.forEach(item => {
