@@ -438,24 +438,15 @@ function updateFilterApplyVisibility() {
 
 // ------------------ Select-Bird UI logic ------------------
 function initSelectUI() {
-  const btn = document.getElementById('select-btn');
-  const panel = document.getElementById('select-panel');
-  const backdrop = document.getElementById('select-backdrop');
-  const closeBtn = document.getElementById('close-select');
-  const searchBtn = document.getElementById('search-bird');
-  const resetBtn = document.getElementById('reset-select');
+  // Embedded select controls inside the Filters panel
   const input = document.getElementById('select-input');
-
-  if (!btn || !panel) return;
-
-  btn.classList.add('hidden');
-  btn.addEventListener('click', openSelectPanel);
-  backdrop && backdrop.addEventListener('click', closeSelectPanel);
-  closeBtn && closeBtn.addEventListener('click', closeSelectPanel);
-  searchBtn && searchBtn.addEventListener('click', applySelectSearch);
-  resetBtn && resetBtn.addEventListener('click', resetSelect);
   const addBtn = document.getElementById('add-species');
   const selectedContainer = document.getElementById('selected-species');
+  const resetBtn = document.getElementById('reset-select');
+
+  // hide the legacy select button (we now embed selection inside filters)
+  const legacyBtn = document.getElementById('select-btn');
+  if (legacyBtn) legacyBtn.classList.add('hidden');
 
   // suggestions
   if (input) {
@@ -475,6 +466,7 @@ function initSelectUI() {
   }
 
   if (addBtn) addBtn.addEventListener('click', addSpeciesFromInput);
+  if (resetBtn) resetBtn.addEventListener('click', resetSelect);
 
   function renderSelectedSpecies() {
     if (!selectedContainer) return;
@@ -654,8 +646,7 @@ function applySelectSearch() {
                 if (!matched2 || matched2.length === 0) {
                   console.log('Stepped aggregation returned 0 matches. Fetched', all2.length);
                   if (all2.length > 0) {
-                    const uniq = Array.from(new Set(all2.map(x => x.comName).filter(Boolean))).slice(0, 20);
-                    birdsDiv.innerHTML = `<p class="no-birds-message">No matching sightings found for selected birds.</p><div style="text-align:center;margin-top:12px;font-size:0.9rem;color:#444">Sample nearby species: ${uniq.join(', ')}</div>`;
+                    birdsDiv.innerHTML = '<p class="no-birds-message">No matching sightings found for selected birds.</p>';
                   } else {
                     birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
                   }
@@ -699,8 +690,7 @@ function applySelectSearch() {
           if (!matched || matched.length === 0) {
             console.log('Name-based fallback search found 0 matches. Fetched', all.length, 'items. Matchers:', matchers);
             if (all.length > 0) {
-              const uniq = Array.from(new Set(all.map(x => x.comName).filter(Boolean))).slice(0, 20);
-              birdsDiv.innerHTML = `<p class="no-birds-message">No matching sightings found for selected birds.</p><div style="text-align:center;margin-top:12px;font-size:0.9rem;color:#444">Sample nearby species: ${uniq.join(', ')}</div>`;
+              birdsDiv.innerHTML = '<p class="no-birds-message">No matching sightings found for selected birds.</p>';
             } else {
               birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
             }
@@ -980,6 +970,14 @@ function resetFilters() {
   filterState.lat = userLat || null;
   filterState.lng = userLng || null;
 
+  // also clear any selected birds from the embedded Select section
+  selectedSpecies = null;
+  selectedSpeciesList = [];
+  const selectedContainer = document.getElementById('selected-species');
+  if (selectedContainer) selectedContainer.innerHTML = '';
+  const inputEl = document.getElementById('select-input');
+  if (inputEl) inputEl.value = '';
+
   // update UI elements
   const distEl = document.getElementById('filter-distance');
   if (distEl) distEl.value = filterState.distance;
@@ -1102,6 +1100,83 @@ function applyFilters() {
   showSearchStatus('Applying filters');
   // close UI
   closeFilterPanel();
+  // If user selected birds in the Filters panel, run species-aware search
+  if (selectedSpeciesList && selectedSpeciesList.length > 0) {
+    const speciesList = selectedSpeciesList.slice();
+    const dist = filterState.distance;
+    const maxResults = 500;
+    loadLocalSpeciesCSV().then(() => {
+      const matchers = speciesList.map(s => {
+        const raw = String(s).trim();
+        let code = null;
+        const m = raw.match(/\(([^)]+)\)\s*$/);
+        if (m && m[1]) code = m[1].trim().toLowerCase();
+        if (!code && localSpeciesLoaded && localSpeciesList.length > 0) {
+          const found = localSpeciesList.find(x => x.comName && x.comName.toLowerCase() === raw.toLowerCase());
+          if (found && found.speciesCode) code = String(found.speciesCode).toLowerCase();
+        }
+        return { raw, norm: normalizeForMatch(raw), code };
+      });
+      const filteredMatchers = matchers.filter(m => (m.code && m.code.length > 0) || (m.norm && m.norm.length > 0));
+      const codes = filteredMatchers.map(m => m.code).filter(Boolean);
+      if (codes.length > 0) {
+        fetchBirdsBySpeciesCodes(lat, lng, dist, codes, 300)
+          .then(list => {
+            const all = Array.isArray(list) ? list : [];
+            if (!all || all.length === 0) {
+              console.log('Code-based query returned 0 items — trying tiled aggregation');
+              fetchBirdsBySteps(lat, lng, dist, 600)
+                .then(all2 => {
+                  const matched2 = all2.filter(b => speciesMatches(b, filteredMatchers)).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
+                  showFetchDiagnostics(all2.length, matched2.length);
+                  hideSearchStatus();
+                  if (!matched2 || matched2.length === 0) {
+                    if (all2.length > 0) {
+                      birdsDiv.innerHTML = '<p class="no-birds-message">No matching sightings found for selected birds.</p>';
+                    } else {
+                      birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
+                    }
+                  } else {
+                    displayBirds(matched2, lat, lng);
+                  }
+                })
+                .catch(err => { console.error('tiled aggregation error', err); hideSearchStatus(); birdsDiv.innerHTML = '<p>Error fetching bird data.</p>'; });
+              return;
+            }
+            const matchedBySpecies = all.filter(b => speciesMatches(b, filteredMatchers));
+            const matched = matchedBySpecies.filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
+            showFetchDiagnostics(all.length, matched.length);
+            hideSearchStatus();
+            if (!matched || matched.length === 0) {
+              birdsDiv.innerHTML = '<p class="no-birds-message">No matching sightings found for selected birds.</p>';
+            } else {
+              displayBirds(matched, lat, lng);
+            }
+          })
+          .catch(err => { console.error('code-based species search error', err); hideSearchStatus(); birdsDiv.innerHTML = '<p>Error fetching bird data.</p>'; });
+      } else {
+        fetchBirdsWithinDistance(lat, lng, dist, maxResults)
+          .then(list => {
+            const all = Array.isArray(list) ? list : [];
+            const matched = all.filter(b => speciesMatches(b, filteredMatchers)).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
+            showFetchDiagnostics(all.length, matched.length);
+            hideSearchStatus();
+            if (!matched || matched.length === 0) {
+              if (all.length > 0) {
+                birdsDiv.innerHTML = '<p class="no-birds-message">No matching sightings found for selected birds.</p>';
+              } else {
+                birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
+              }
+            } else {
+              displayBirds(matched, lat, lng);
+            }
+          })
+          .catch(err => { console.error('species search error', err); hideSearchStatus(); birdsDiv.innerHTML = '<p>Error fetching bird data.</p>'; });
+      }
+    });
+    return;
+  }
+
   // call the fetcher with a single radius: the distance typed by the user
   fetchWithRadiusRetries(lat, lng, [filterState.distance], 100, filterState.days);
 }
