@@ -633,8 +633,11 @@ function applySelectSearch() {
       }
       return { raw, norm: normalizeForMatch(raw), code };
     });
+    // remove any empty matchers (avoid matching everything if user input was blank)
+    const filteredMatchers = matchers.filter(m => (m.code && m.code.length > 0) || (m.norm && m.norm.length > 0));
+    console.log('Search matchers:', filteredMatchers);
 
-    const codes = matchers.map(m => m.code).filter(Boolean);
+    const codes = filteredMatchers.map(m => m.code).filter(Boolean);
     if (codes.length > 0) {
       // prefer code-based queries
       fetchBirdsBySpeciesCodes(lat, lng, dist, codes, 300)
@@ -646,7 +649,7 @@ function applySelectSearch() {
             fetchBirdsWithinDistance(lat, lng, dist, maxResults)
               .then(list2 => {
                 const all2 = Array.isArray(list2) ? list2 : [];
-                const matchers2 = matchers; // reuse computed matchers
+                    const matchers2 = filteredMatchers; // reuse computed matchers
                       const matched2 = all2.filter(b => speciesMatches(b, matchers2)).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
 
                 showFetchDiagnostics(all2.length, matched2.length);
@@ -672,7 +675,7 @@ function applySelectSearch() {
           }
 
           // ensure we still filter by species client-side (backend may ignore species param)
-          const matchedBySpecies = all.filter(b => speciesMatches(b, matchers));
+          const matchedBySpecies = all.filter(b => speciesMatches(b, filteredMatchers));
           const matched = matchedBySpecies.filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
           showFetchDiagnostics(all.length, matched.length);
           hideSearchStatus();
@@ -693,19 +696,7 @@ function applySelectSearch() {
       fetchBirdsWithinDistance(lat, lng, dist, maxResults)
         .then(list => {
           const all = Array.isArray(list) ? list : [];
-          const matched = all.filter(b => {
-            const comNorm = normalizeForMatch(b.comName || '');
-            const codeNorm = normalizeForMatch(String(b.speciesCode || b.species || ''));
-            return matchers.some(m => {
-              if (m.code) {
-                if (codeNorm === normalizeForMatch(m.code) || codeNorm.includes(normalizeForMatch(m.code))) return true;
-              }
-              if (comNorm === m.norm) return true;
-              if (comNorm.includes(m.norm) || m.norm.includes(comNorm)) return true;
-              if (codeNorm.includes(m.norm) || m.norm.includes(codeNorm)) return true;
-              return false;
-            });
-          }).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
+          const matched = all.filter(b => speciesMatches(b, filteredMatchers)).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
           showFetchDiagnostics(all.length, matched.length);
           hideSearchStatus();
           if (!matched || matched.length === 0) {
@@ -761,7 +752,12 @@ function fetchBirdsBySpeciesCodes(lat, lng, distMiles, codes = [], maxResultsPer
 
 // small UI helper to show fetched vs displayed counts for debugging
 function showFetchDiagnostics(fetchedCount, displayedCount) {
-  // diagnostic only in console (do not render to DOM)
+  // remove any leftover on-page diagnostic element if present
+  try {
+    const existing = document.getElementById('fetch-diagnostics');
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+  } catch (e) {}
+  // diagnostic only in console
   console.log(`Fetched ${fetchedCount} sightings — showing ${displayedCount}`);
 }
 
@@ -771,12 +767,16 @@ function speciesMatches(item, matchers) {
   const comNorm = normalizeForMatch(item.comName || '');
   const codeNorm = normalizeForMatch(String(item.speciesCode || item.species || ''));
   return matchers.some(m => {
-    if (m.code) {
-      if (codeNorm === normalizeForMatch(m.code) || codeNorm.includes(normalizeForMatch(m.code))) return true;
+    const mCode = m.code ? normalizeForMatch(m.code) : null;
+    const mNorm = m.norm ? normalizeForMatch(m.norm) : null;
+    if (mCode) {
+      if (codeNorm === mCode || codeNorm.includes(mCode)) return true;
     }
-    if (comNorm === m.norm) return true;
-    if (comNorm.includes(m.norm) || m.norm.includes(comNorm)) return true;
-    if (codeNorm.includes(m.norm) || m.norm.includes(codeNorm)) return true;
+    if (mNorm) {
+      if (comNorm === mNorm) return true;
+      if (comNorm.includes(mNorm) || mNorm.includes(comNorm)) return true;
+      if (codeNorm.includes(mNorm) || mNorm.includes(codeNorm)) return true;
+    }
     return false;
   });
 }
@@ -839,6 +839,8 @@ function showLocationName(lat, lng) {
 
 function init() {
   console.log('init');
+  // remove any leftover on-page diagnostics from earlier versions
+  try { const old = document.getElementById('fetch-diagnostics'); if (old && old.parentNode) old.parentNode.removeChild(old); } catch (e) {}
   if ('geolocation' in navigator) {
     navigator.geolocation.getCurrentPosition(pos => {
       const { latitude, longitude } = pos.coords;
