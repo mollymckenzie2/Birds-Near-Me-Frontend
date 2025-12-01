@@ -640,6 +640,49 @@ function applySelectSearch() {
       fetchBirdsBySpeciesCodes(lat, lng, dist, codes, 300)
         .then(list => {
           const all = Array.isArray(list) ? list : [];
+          // if the backend returned nothing for the code-query, fall back to broad fetch+name matching
+          if (!all || all.length === 0) {
+            console.log('Code-based query returned 0 items — falling back to name-based fetch');
+            fetchBirdsWithinDistance(lat, lng, dist, maxResults)
+              .then(list2 => {
+                const all2 = Array.isArray(list2) ? list2 : [];
+                const matchers2 = matchers; // reuse computed matchers
+                const matched2 = all2.filter(b => {
+                  const comNorm = normalizeForMatch(b.comName || '');
+                  const codeNorm = normalizeForMatch(String(b.speciesCode || b.species || ''));
+                  return matchers2.some(m => {
+                    if (m.code) {
+                      if (codeNorm === normalizeForMatch(m.code) || codeNorm.includes(normalizeForMatch(m.code))) return true;
+                    }
+                    if (comNorm === m.norm) return true;
+                    if (comNorm.includes(m.norm) || m.norm.includes(comNorm)) return true;
+                    if (codeNorm.includes(m.norm) || m.norm.includes(codeNorm)) return true;
+                    return false;
+                  });
+                }).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
+
+                showFetchDiagnostics(all2.length, matched2.length);
+                hideSearchStatus();
+                if (!matched2 || matched2.length === 0) {
+                  console.log('Fallback name-based fetch returned 0 matches. Fetched', all2.length);
+                  if (all2.length > 0) {
+                    const uniq = Array.from(new Set(all2.map(x => x.comName).filter(Boolean))).slice(0, 20);
+                    birdsDiv.innerHTML = `<p class="no-birds-message">No matching sightings found for selected birds.</p><div style="text-align:center;margin-top:12px;font-size:0.9rem;color:#444">Sample nearby species: ${uniq.join(', ')}</div>`;
+                  } else {
+                    birdsDiv.innerHTML = '<p class="no-birds-message">No Birds Found - Adjust Filters</p>';
+                  }
+                } else {
+                  displayBirds(matched2, lat, lng);
+                }
+              })
+              .catch(err => {
+                console.error('fallback fetch error', err);
+                hideSearchStatus();
+                birdsDiv.innerHTML = '<p>Error fetching bird data.</p>';
+              });
+            return;
+          }
+
           const matched = all.filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
           showFetchDiagnostics(all.length, matched.length);
           hideSearchStatus();
