@@ -647,19 +647,7 @@ function applySelectSearch() {
               .then(list2 => {
                 const all2 = Array.isArray(list2) ? list2 : [];
                 const matchers2 = matchers; // reuse computed matchers
-                const matched2 = all2.filter(b => {
-                  const comNorm = normalizeForMatch(b.comName || '');
-                  const codeNorm = normalizeForMatch(String(b.speciesCode || b.species || ''));
-                  return matchers2.some(m => {
-                    if (m.code) {
-                      if (codeNorm === normalizeForMatch(m.code) || codeNorm.includes(normalizeForMatch(m.code))) return true;
-                    }
-                    if (comNorm === m.norm) return true;
-                    if (comNorm.includes(m.norm) || m.norm.includes(comNorm)) return true;
-                    if (codeNorm.includes(m.norm) || m.norm.includes(codeNorm)) return true;
-                    return false;
-                  });
-                }).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
+                      const matched2 = all2.filter(b => speciesMatches(b, matchers2)).filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
 
                 showFetchDiagnostics(all2.length, matched2.length);
                 hideSearchStatus();
@@ -683,7 +671,9 @@ function applySelectSearch() {
             return;
           }
 
-          const matched = all.filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
+          // ensure we still filter by species client-side (backend may ignore species param)
+          const matchedBySpecies = all.filter(b => speciesMatches(b, matchers));
+          const matched = matchedBySpecies.filter(b => obsWithinDays(b.obsDt, filterState.days || 3));
           showFetchDiagnostics(all.length, matched.length);
           hideSearchStatus();
           if (!matched || matched.length === 0) {
@@ -771,19 +761,24 @@ function fetchBirdsBySpeciesCodes(lat, lng, distMiles, codes = [], maxResultsPer
 
 // small UI helper to show fetched vs displayed counts for debugging
 function showFetchDiagnostics(fetchedCount, displayedCount) {
-  let diag = document.getElementById('fetch-diagnostics');
-  if (!diag) {
-    diag = document.createElement('div');
-    diag.id = 'fetch-diagnostics';
-    diag.style.textAlign = 'center';
-    diag.style.fontSize = '0.9rem';
-    diag.style.color = '#444';
-    diag.style.margin = '8px 0';
-    const container = document.querySelector('.container') || document.body;
-    container.insertBefore(diag, container.querySelector('#birds'));
-  }
-  diag.textContent = `Fetched ${fetchedCount} sightings — showing ${displayedCount}`;
-  setTimeout(() => { if (diag) diag.remove(); }, 6000);
+  // diagnostic only in console (do not render to DOM)
+  console.log(`Fetched ${fetchedCount} sightings — showing ${displayedCount}`);
+}
+
+// return true if a backend item matches any of the provided matchers
+function speciesMatches(item, matchers) {
+  if (!item || !matchers || matchers.length === 0) return false;
+  const comNorm = normalizeForMatch(item.comName || '');
+  const codeNorm = normalizeForMatch(String(item.speciesCode || item.species || ''));
+  return matchers.some(m => {
+    if (m.code) {
+      if (codeNorm === normalizeForMatch(m.code) || codeNorm.includes(normalizeForMatch(m.code))) return true;
+    }
+    if (comNorm === m.norm) return true;
+    if (comNorm.includes(m.norm) || m.norm.includes(comNorm)) return true;
+    if (codeNorm.includes(m.norm) || m.norm.includes(codeNorm)) return true;
+    return false;
+  });
 }
 
 function fetchBirdsWithinDistance(lat, lng, distMiles = 10, maxResults = 200) {
