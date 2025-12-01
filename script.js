@@ -312,6 +312,13 @@ function haversineDistanceMiles(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+function formatDistanceMiles(d) {
+  if (d === null || d === undefined || isNaN(d)) return 'Unknown';
+  // for small distances show one decimal, otherwise round to whole miles
+  if (d < 10) return `${Number(d.toFixed(1))} mi`;
+  return `${Math.round(d)} mi`;
+}
+
 function displayBirds(birds, userLat, userLng) {
   birdsDiv.innerHTML = '';
   console.log('displayBirds', birds.length);
@@ -369,7 +376,7 @@ function displayBirds(birds, userLat, userLng) {
     distanceP.className = 'distance';
     if (bird.lat && bird.lng && userLat && userLng) {
       const dist = haversineDistanceMiles(userLat, userLng, bird.lat, bird.lng);
-      distanceP.innerHTML = `<span>Distance Away:</span> ${Number(dist).toPrecision(2)} mi`;
+      distanceP.innerHTML = `<span>Distance Away:</span> ${formatDistanceMiles(dist)}`;
     } else {
       distanceP.innerHTML = `<span>Distance Away:</span> Unknown`;
     }
@@ -478,7 +485,9 @@ function initSelectUI() {
       chip.style.display = 'inline-block';
       chip.style.marginRight = '8px';
       chip.style.marginBottom = '8px';
-      chip.textContent = s;
+      // show only the common name (strip any trailing " (code)") for chip display
+      const displayName = String(s).replace(/\s*\([^)]*\)\s*$/, '');
+      chip.textContent = displayName;
       chip.title = 'Remove';
       chip.addEventListener('click', () => {
         selectedSpeciesList.splice(idx, 1);
