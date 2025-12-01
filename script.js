@@ -554,7 +554,8 @@ function fetchSpeciesSuggestions(q) {
       const ql = q.toLowerCase();
       const matches = list.filter(s => (s.comName && s.comName.toLowerCase().includes(ql)) || (s.speciesCode && s.speciesCode.toLowerCase().includes(ql)));
       // limit to top 50 suggestions
-      const out = matches.slice(0, 50).map(s => `${s.comName} (${s.speciesCode})`);
+      // show only common name in the suggestion value (strip code)
+      const out = matches.slice(0, 50).map(s => `${s.comName}`);
       datalist.innerHTML = out.map(v => `<option value="${v}"></option>`).join('');
       return;
     }
@@ -569,7 +570,9 @@ function fetchSpeciesSuggestions(q) {
       .then(list2 => {
         speciesCache = Array.isArray(list2) ? list2 : [];
         datalist.innerHTML = speciesCache.map(s => {
-          const v = (typeof s === 'string') ? s : (s.comName || s.name || s.species || '');
+          let v = (typeof s === 'string') ? s : (s.comName || s.name || s.species || '');
+          // strip any trailing code in parentheses so the suggestion shows only the common name
+          v = String(v).replace(/\s*\([^)]*\)\s*$/, '');
           return `<option value="${v}"></option>`;
         }).join('');
       })
