@@ -749,16 +749,60 @@ function fetchBirdsBySpeciesCodes(lat, lng, distMiles, codes = [], maxResultsPer
 
 // Fetch sightings by stepping through smaller radii up to distMiles, aggregate and dedupe.
 function fetchBirdsBySteps(lat, lng, distMiles, maxResultsPerCall = 500) {
-  // make a series of smaller-radius calls to avoid backend failures on large radii
-  const baseSteps = [10, 25, 50, 100];
-  const steps = baseSteps.filter(s => s <= distMiles);
-  // ensure we include the requested max distance as the final step if it's larger than our base steps
-  if (distMiles > Math.max(...baseSteps)) steps.push(distMiles);
+  // Backend enforces a maximum distance (50 km). If the requested distance exceeds that,
+  // perform multiple searches (tiling) using the backend max radius from different centers
+  // to cover the larger area and aggregate/dedupe results.
+  const backendMaxKm = 50;
+  const kmPerMile = 1.60934;
+  const backendMaxMiles = Math.round((backendMaxKm / kmPerMile) * 100) / 100;
 
-  const promises = steps.map(r => fetchBirdsWithinDistance(lat, lng, r, maxResultsPerCall).catch(() => []));
+  // if within backend limit, just do single call
+  if (distMiles <= backendMaxMiles) {
+    return fetchBirdsWithinDistance(lat, lng, distMiles, maxResultsPerCall).then(list => Array.isArray(list) ? list : []).catch(() => []);
+  }
+
+  // We need to tile the area. Compute number of rings needed and sample points around each ring.
+  const distKm = distMiles * kmPerMile;
+  const rings = Math.max(1, Math.ceil(distKm / backendMaxKm));
+  const centers = [];
+  // include center
+  centers.push({ lat, lng });
+
+  // helper: compute destination point given bearing (degrees) and distance km
+  function destinationPoint(lat1, lon1, brngDeg, dKm) {
+    const R = 6371; // Earth's radius km
+    const brng = brngDeg * Math.PI / 180;
+    const lat1r = lat1 * Math.PI / 180;
+    const lon1r = lon1 * Math.PI / 180;
+    const dr = dKm / R;
+    const lat2r = Math.asin(Math.sin(lat1r) * Math.cos(dr) + Math.cos(lat1r) * Math.sin(dr) * Math.cos(brng));
+    const lon2r = lon1r + Math.atan2(Math.sin(brng) * Math.sin(dr) * Math.cos(lat1r), Math.cos(dr) - Math.sin(lat1r) * Math.sin(lat2r));
+    return { lat: lat2r * 180 / Math.PI, lng: ((lon2r * 180 / Math.PI) + 540) % 360 - 180 };
+  }
+
+  // for each ring radius step, place several centers around the circle
+  for (let i = 1; i <= rings; i++) {
+    const ringRadiusKm = Math.min(distKm, i * backendMaxKm * 0.9);
+    // circumference and spacing heuristic
+    const spacing = backendMaxKm * 0.9;
+    const circumference = 2 * Math.PI * Math.max(1, ringRadiusKm);
+    let points = Math.max(6, Math.ceil(circumference / spacing));
+    // cap total centers to avoid too many requests
+    if (centers.length + points > 28) {
+      points = Math.max(6, 28 - centers.length);
+    }
+    for (let p = 0; p < points; p++) {
+      const bearing = (360 / points) * p;
+      const dest = destinationPoint(lat, lng, bearing, ringRadiusKm);
+      centers.push(dest);
+      if (centers.length >= 28) break;
+    }
+    if (centers.length >= 28) break;
+  }
+
+  const promises = centers.map(c => fetchBirdsWithinDistance(c.lat, c.lng, backendMaxMiles, maxResultsPerCall).catch(() => []));
   return Promise.all(promises).then(results => {
     const flat = [].concat(...results.map(r => Array.isArray(r) ? r : []));
-    // dedupe by obsId or by species-date-location key
     const seen = new Set();
     const dedup = [];
     flat.forEach(item => {
@@ -766,7 +810,7 @@ function fetchBirdsBySteps(lat, lng, distMiles, maxResultsPerCall = 500) {
       if (!seen.has(k)) { seen.add(k); dedup.push(item); }
     });
     return dedup;
-  });
+  }).catch(() => []);
 }
 
 // small UI helper to show fetched vs displayed counts for debugging
